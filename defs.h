@@ -7,6 +7,17 @@ typedef enum Bool {
     true = 1,
 } Bool;
 
+// Activity type
+typedef enum ActType {
+    undef = 0,
+    ride = 1,
+    hike = 4,
+    run = 9,
+    walk = 10,
+    vride = 17,
+    other = 99
+} ActType;
+
 // Timestamp format
 typedef enum TsFmt {
     utc = 0,    // YYYY-MM-DD HH:MM:SS
@@ -21,6 +32,10 @@ typedef enum Units {
 } Units;
 
 typedef struct CmdArgs {
+    int argc;               // number of arguments
+    char **argv;            // list of arguments
+    const char *inFile;     // input file name
+
     Bool quiet;             // don't print any warning messages
     TsFmt tsFmt;            // format of the timestamp value
     Units units;            // type of units to display
@@ -96,6 +111,9 @@ typedef struct GpsTrk {
     // Number of dummy TrkPt's discarded; e.g. because
     // of a null deltaT or a null deltaD.
     int numDiscTrkPts;
+
+    // Activity type / Sport
+    ActType actType;
 
     // Bitmask of optional metrics present in the input
     int inMask;

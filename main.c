@@ -7,6 +7,9 @@
 #include <time.h>
 
 #include "defs.h"
+#include "input.h"
+//#include "output.h"
+#include "trkpt.h"
 
 #define PROGRAM_VERSION "1.0"
 
@@ -86,9 +89,12 @@ static int parseArgs(int argc, char **argv, CmdArgs *pArgs)
         } else if (strcmp(arg, "--version") == 0) {
             fprintf(stdout, "Program version %s built on %s %s\n", PROGRAM_VERSION, __DATE__, __TIME__);
             exit(0);
-        } else {
+        } else if (strncmp(arg, "--", 2) == 0) {
             fprintf(stderr, "Invalid option: %s\nUse --help for the list of supported options.\n", arg);
             return -1;
+        } else {
+            // Assume it's the input file(s)
+            break;
         }
     }
 
@@ -98,12 +104,48 @@ static int parseArgs(int argc, char **argv, CmdArgs *pArgs)
 int main(int argc, char **argv)
 {
     CmdArgs cmdArgs = {0};
+    GpsTrk gpsTrk = {0};
+    TrkPt *pTrkPt;
     int n;
 
     // Parse the command arguments
     if ((n = parseArgs(argc, argv, &cmdArgs)) < 0) {
         return -1;
     }
+
+    TAILQ_INIT(&gpsTrk.trkPtList);
+
+    // Process each FIT input file
+    while (n < argc) {
+        const char *fileSuffix;
+        int s;
+        cmdArgs.inFile = argv[n++];
+        if ((fileSuffix = strrchr(cmdArgs.inFile, '.')) == NULL) {
+            fprintf(stderr, "Unsupported input file %s\n", cmdArgs.inFile);
+            return -1;
+        }
+        if (strcmp(fileSuffix, ".fit") == 0) {
+            s = parseFitFile(&cmdArgs, &gpsTrk, cmdArgs.inFile);
+        } else {
+            fprintf(stderr, "Unsupported input file %s\n", cmdArgs.inFile);
+            return -1;
+        }
+        if (s != 0) {
+            fprintf(stderr, "Failed to parse input file %s\n", cmdArgs.inFile);
+            return -1;
+        }
+        cmdArgs.inFile = NULL;
+    }
+
+    // Done parsing all the input files. Make sure we have
+    // at least one TrkPt!
+    if ((pTrkPt = TAILQ_FIRST(&gpsTrk.trkPtList)) == NULL) {
+        // Hu?
+        fprintf(stderr, "No track points found!\n");
+        return -1;
+    }
+
+    dumpTrkPts(&gpsTrk, pTrkPt, 0, gpsTrk.numTrkPts);
 
     return 0;
 }
