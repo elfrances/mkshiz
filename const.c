@@ -13,4 +13,4 @@ const double kmToMile = (double) 0.621371;
 const double meterToFoot = (double) 3.28084;
 
 // Banner line used in CSV files
-const char *csvBannerLine = "<trkPt>,<inFile>,<lineNum>,<time>,<latitude>,<longitude>,<elevation>,<distance>,<speed>,<power>,<ambTemp>,<cadence>,<heartRate>,<run>,<rise>,<dist>,<grade>,<deltaG>,<deltaS>,<deltaT>";
+const char *csvBannerLine = "<trkPt>,<inFile>,<lineNum>,<time>,<latitude>,<longitude>,<elevation>,<distance>,<speed>,<power>,<ambTemp>,<cadence>,<hr>";

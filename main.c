@@ -8,10 +8,8 @@
 
 #include "defs.h"
 #include "input.h"
-//#include "output.h"
+#include "output.h"
 #include "trkpt.h"
-
-#define PROGRAM_VERSION "1.0"
 
 static const char *help =
         "SYNTAX:\n"
@@ -82,12 +80,26 @@ static int parseArgs(int argc, char **argv, CmdArgs *pArgs)
                 invalidArgument(arg, val);
                 return -1;
             }
+        } else if (strcmp(arg, "--output-format") == 0) {
+            val = argv[++n];
+            if (strcmp(val, "csv") == 0) {
+                pArgs->outFmt = csv;
+            } else if (strcmp(val, "gpx") == 0) {
+                pArgs->outFmt = gpx;
+            } else if (strcmp(val, "shiz") == 0) {
+                pArgs->outFmt = shiz;
+            } else if (strcmp(val, "tcx") == 0) {
+                pArgs->outFmt = tcx;
+            } else {
+                invalidArgument(arg, val);
+                return -1;
+            }
         } else if (strcmp(arg, "--quiet") == 0) {
             pArgs->quiet = true;
         } else if (strcmp(arg, "--verbatim") == 0) {
             pArgs->verbatim = true;
         } else if (strcmp(arg, "--version") == 0) {
-            fprintf(stdout, "Program version %s built on %s %s\n", PROGRAM_VERSION, __DATE__, __TIME__);
+            fprintf(stdout, "Program version %d.%d built on %s %s\n", PROG_VER_MAJOR, PROG_VER_MINOR, __DATE__, __TIME__);
             exit(0);
         } else if (strncmp(arg, "--", 2) == 0) {
             fprintf(stderr, "Invalid option: %s\nUse --help for the list of supported options.\n", arg);
@@ -97,6 +109,8 @@ static int parseArgs(int argc, char **argv, CmdArgs *pArgs)
             break;
         }
     }
+
+    pArgs->outFile = stdout;
 
     return n;
 }
@@ -145,7 +159,7 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    dumpTrkPts(&gpsTrk, pTrkPt, 0, gpsTrk.numTrkPts);
+    printOutput(&gpsTrk, &cmdArgs);
 
     return 0;
 }

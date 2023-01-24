@@ -2,6 +2,9 @@
 
 #include <sys/queue.h>
 
+#define PROG_VER_MAJOR  1
+#define PROG_VER_MINOR  0
+
 typedef enum Bool {
     false = 0,
     true = 1,
@@ -17,6 +20,15 @@ typedef enum ActType {
     vride = 17,
     other = 99
 } ActType;
+
+// Output file format
+typedef enum OutFmt {
+    nil = 0,
+    csv = 1,    // Comma-Separated-Values format
+    gpx = 2,    // GPS Exchange format
+    shiz = 3,   // FulGaz format
+    tcx = 4     // Training Center Exchange format
+} OutFmt;
 
 // Timestamp format
 typedef enum TsFmt {
@@ -36,6 +48,8 @@ typedef struct CmdArgs {
     char **argv;            // list of arguments
     const char *inFile;     // input file name
 
+    FILE *outFile;          // output file
+    OutFmt outFmt;          // format of the output data (csv, shiz)
     Bool quiet;             // don't print any warning messages
     TsFmt tsFmt;            // format of the timestamp value
     Units units;            // type of units to display
@@ -184,3 +198,15 @@ typedef struct GpsTrk {
     const TrkPt *minTempTrkPt;      // TrkPt with min temp value
 } GpsTrk;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+static __inline__ double mToKm(double m) { return (m / 1000.0); }
+static __inline__ double kmToM(double km) { return (km * 1000.0); }
+static __inline__ double mpsToKph(double mps) { return (mps * 3.6); }
+static __inline__ double kphToMps(double kph) { return (kph / 3.6); }
+
+#ifdef __cplusplus
+};
+#endif
