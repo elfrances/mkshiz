@@ -45,10 +45,10 @@ $(OBJ_DIR)/%.o: %.c
 all: mkshiz
 
 mkshiz: $(OBJECTS) Makefile
-	$(CC) $(LDFLAGS) -o $(BIN_DIR)/$@ $(OBJECTS) -lcurl
+	$(CC) $(LDFLAGS) -o $(BIN_DIR)/$@ $(OBJECTS) -lm
 
 clean:
-	$(RM) $(OBJECTS) $(OBJ_DIR)/build_info.o $(DEP_DIR)/*.d $(BIN_DIR)/mkshiz
+	$(RM) $(OBJECTS) $(DEP_DIR)/*.d $(BIN_DIR)/mkshiz
 
 include $(DEPS)
 
