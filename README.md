@@ -8,7 +8,7 @@ The **FulGaz** virtual cycling app uses a SHIZ file to control the resistance of
 
 ## Building the tool
 
-To build the **mkshiz** binary all you need to do is run 'make' at the top-level directory. The tool is known to build warning and error free under Ubuntu, macOS, and Cygwin. As it is written entirely in C and only uses the standard math library, it should be easy to port to other platforms.
+To build the **mkshiz** binary all you need to do is run 'make' at the top-level directory. The tool is known to build warning and error free under Ubuntu, macOS, and Cygwin. As it is written entirely in C and only uses the standard math library and the GNU readline library, it should be easy to port to other platforms.
 
 ```
 $ make
@@ -17,7 +17,7 @@ cc -m64 -D_GNU_SOURCE -I. -I./fit -ggdb -Wall -Werror -O0 -o input.o -c input.c
 cc -m64 -D_GNU_SOURCE -I. -I./fit -ggdb -Wall -Werror -O0 -o main.o -c main.c
 cc -m64 -D_GNU_SOURCE -I. -I./fit -ggdb -Wall -Werror -O0 -o output.o -c output.c
 cc -m64 -D_GNU_SOURCE -I. -I./fit -ggdb -Wall -Werror -O0 -o trkpt.o -c trkpt.c
-cc -ggdb  -o ./mkshiz ./const.o ./input.o ./main.o ./output.o ./trkpt.o -lm
+cc -ggdb  -o ./mkshiz ./const.o ./input.o ./main.o ./output.o ./trkpt.o -lm -lreadline
 ```
 
 ## Usage

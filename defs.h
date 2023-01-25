@@ -43,9 +43,9 @@ typedef enum Units {
     imperial = 2,   // feet, mph, farenheit
 } Units;
 
+#define MAX_ARGS    8
+
 typedef struct CmdArgs {
-    int argc;               // number of arguments
-    char **argv;            // list of arguments
     const char *inFile;     // input file name
 
     FILE *outFile;          // output file
@@ -54,6 +54,10 @@ typedef struct CmdArgs {
     TsFmt tsFmt;            // format of the timestamp value
     Units units;            // type of units to display
     Bool verbatim;          // no data adjustments
+
+    // Used by the CLI
+    int argc;               // number of arguments
+    char *argv[MAX_ARGS];   // list of arguments
 } CmdArgs;
 
 // Sensor data bit masks

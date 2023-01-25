@@ -6,6 +6,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "cli.h"
 #include "defs.h"
 #include "input.h"
 #include "output.h"
@@ -42,7 +43,7 @@ static int parseArgs(int argc, char **argv, CmdArgs *pArgs)
     int numArgs, n;
 
     if (argc < 2) {
-        fprintf(stderr, "Invalid syntax.  Use 'gpxFileTool --help' for more information.\n");
+        fprintf(stderr, "Invalid syntax.  Use 'mkshiz --help' for more information.\n");
         return -1;
     }
 
@@ -159,7 +160,8 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    printOutput(&gpsTrk, &cmdArgs);
+    // Process the CLI commands
+    cliCmdHandler(&gpsTrk, &cmdArgs);
 
     return 0;
 }

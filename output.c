@@ -118,6 +118,7 @@ static void printSummary(GpsTrk *pTrk, CmdArgs *pArgs)
     }
     fprintf(pArgs->outFile, "       avgGrade: %.2lf%%\n", (pTrk->grade / pTrk->numTrkPts));
 
+#if 0
     if (pTrk->inMask & SD_CADENCE) {
         p = pTrk->maxCadenceTrkPt;
         fprintf(pArgs->outFile, "     maxCadence: %d rpm @ TrkPt #%d (%s) : time = %ld s, distance = %.3lf km\n",
@@ -154,6 +155,7 @@ static void printSummary(GpsTrk *pTrk, CmdArgs *pArgs)
                 pTrk->minTemp, p->index, fmtTrkPtIdx(p), (long) (p->timestamp - pTrk->baseTime), mToKm(p->distance));
         fprintf(pArgs->outFile, "        avgTemp: %d C\n", (pTrk->temp / pTrk->numTrkPts));
     }
+#endif
 
     if ((p = pTrk->maxDeltaDTrkPt) != NULL) {
         fprintf(pArgs->outFile, "      maxDeltaD: %.3lf m @ TrkPt #%d (%s) : time = %ld s, distance = %.3lf km\n",
@@ -250,12 +252,8 @@ static void printGpxFmt(GpsTrk *pTrk, CmdArgs *pArgs)
     strftime(timeBuf, sizeof (timeBuf), "%Y-%m-%dT%H:%M:%S", gmtime_r(&now, &brkDwnTime));
     fprintf(pArgs->outFile, "  <metadata>\n");
     fprintf(pArgs->outFile, "    <name> %s </name>\n", "Your Name Here");
-    fprintf(pArgs->outFile, "    <author>mkshiz version %d.%d [https://github.com/elfrances/mkshiz.git]</author>\n", PROG_VER_MAJOR, PROG_VER_MINOR);
-    fprintf(pArgs->outFile, "    <desc> ");
-    for (int n = 1; n < pArgs->argc; n++) {
-        fprintf(pArgs->outFile, "%s ", pArgs->argv[n]);
-    }
-    fprintf(pArgs->outFile, "    </desc>\n");
+    fprintf(pArgs->outFile, "    <author> mkshiz version %d.%d [https://github.com/elfrances/mkshiz.git] </author>\n", PROG_VER_MAJOR, PROG_VER_MINOR);
+    fprintf(pArgs->outFile, "    <desc> </desc>\n");
     fprintf(pArgs->outFile, "    <time>%s</time>\n", timeBuf);
     fprintf(pArgs->outFile, "  </metadata>\n");
 

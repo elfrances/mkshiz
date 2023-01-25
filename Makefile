@@ -45,7 +45,7 @@ $(OBJ_DIR)/%.o: %.c
 all: mkshiz
 
 mkshiz: $(OBJECTS) Makefile
-	$(CC) $(LDFLAGS) -o $(BIN_DIR)/$@ $(OBJECTS) -lm
+	$(CC) $(LDFLAGS) -o $(BIN_DIR)/$@ $(OBJECTS) -lm -lreadline
 
 clean:
 	$(RM) $(OBJECTS) $(DEP_DIR)/*.d $(BIN_DIR)/mkshiz
