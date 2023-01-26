@@ -7,6 +7,7 @@
 #include <time.h>
 
 #include "cli.h"
+#include "const.h"
 #include "defs.h"
 #include "input.h"
 #include "output.h"
@@ -156,8 +157,19 @@ int main(int argc, char **argv)
     // at least one TrkPt!
     if ((pTrkPt = TAILQ_FIRST(&gpsTrk.trkPtList)) == NULL) {
         // Hu?
-        fprintf(stderr, "No track points found!\n");
+        fprintf(stderr, "ERROR: No track points found!\n");
         return -1;
+    }
+
+    // Make sure the FIT includes timing data
+    if (pTrkPt->timestamp == 0.0) {
+        fprintf(stderr, "ERROR: FIT is missing timing data!\n");
+        return -1;
+    }
+
+    // Make sure the FIT includes speed data
+    if (pTrkPt->speed == nilSpeed) {
+        fprintf(stderr, "WARNING: FIT is missing speed data...\n");
     }
 
     // Process the CLI commands

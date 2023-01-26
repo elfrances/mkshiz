@@ -174,7 +174,9 @@ int parseFitFile(CmdArgs *pArgs, GpsTrk *pTrk, const char *inFile)
                                 return -1;
                             }
 
-                            pTrkPt->timestamp = (double) ((time_t) record->timestamp + fitEpoch);
+                            if (record->timestamp != FIT_DATE_TIME_INVALID) {
+                                pTrkPt->timestamp = (double) ((time_t) record->timestamp + fitEpoch);
+                            }
 
                             if (record->position_lat != FIT_SINT32_INVALID) {
                                 pTrkPt->latitude = ((double) record->position_lat / (double) 0x7FFFFFFF) * 180.0;

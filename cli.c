@@ -7,6 +7,7 @@
 
 #include "cli.h"
 #include "output.h"
+#include "trkpt.h"
 
 // Command status code
 typedef enum CmdStat {
@@ -22,11 +23,12 @@ static const char *cliHelp = \
     "history                Print the command history.\n"
     "save <fmt> <file>      Save the data in the specified format and file.\n"
     "                       The format can be: csv, gpx, shiz, tcx.\n"
+    "show [<a> <b>]         Show trackpoints in plain text form.\n"
     "sma <metric> <wind>    Compute the SMA of the specified metric with the\n"
     "                       specified window size. The metric can be: elevation,\n"
     "                       grade, speed. The window size must be an odd number.\n"
     "summary [detail]       Print a summary of the data.\n"
-    "trim <a,b>             Remove the trackpoints between points 'a' and 'b'\n"
+    "trim <a> <b>           Remove the trackpoints between points 'a' and 'b'\n"
     "                       and close the distance and time gaps between them.\n"
     "undo                   Revert the last operation.\n"
     "\n";
@@ -35,6 +37,20 @@ typedef struct CliCmd {
     const char *name;
     CmdStat (*handler)(GpsTrk *, CmdArgs *);
 } CliCmd;
+
+static CmdStat invArgMsg(const char *arg, const char *msg)
+{
+    printf("Invalid argument '%s'\n", arg);
+    if (msg)
+        printf("%s\n", msg);
+    return ERROR;
+}
+
+static CmdStat errMsg(const char *msg)
+{
+    printf("%s\n", msg);
+    return ERROR;
+}
 
 static CmdStat cliCmdExit(GpsTrk *pTrk, CmdArgs *pArgs)
 {
@@ -49,6 +65,36 @@ static CmdStat cliCmdHelp(GpsTrk *pTrk, CmdArgs *pArgs)
 
 static CmdStat cliCmdSave(GpsTrk *pTrk, CmdArgs *pArgs)
 {
+    return OK;
+}
+
+static CmdStat cliCmdShow(GpsTrk *pTrk, CmdArgs *pArgs)
+{
+    int a = -1;
+    int b = -1;
+    TrkPt *tp;
+
+    if (pArgs->argc == 3) {
+        if (sscanf(pArgs->argv[1], "%d", &a) != 1) {
+            return invArgMsg(pArgs->argv[1], NULL);
+        }
+        if (sscanf(pArgs->argv[2], "%d", &b) != 1) {
+            return invArgMsg(pArgs->argv[2], NULL);
+        }
+        if (b < a) {
+            return errMsg("End point <b> must be higher than start point <a>");
+        }
+    }
+
+    TAILQ_FOREACH(tp, &pTrk->trkPtList, tqEntry) {
+        if (((a == -1) || (tp->index >= a)) && ((b == -1) || (tp->index <= b))) {
+            printf("TrkPt #%u at %s {\n", tp->index, fmtTrkPtIdx(tp));
+            printf("  latitude=%.10lf longitude=%.10lf elevation=%.10lf time=%.3lf distance=%.10lf speed=%.10lf dist=%.10lf run=%.10lf rise=%.10lf grade=%.2lf\n",
+                    tp->latitude, tp->longitude, tp->elevation, tp->timestamp, tp->distance, tp->speed, tp->dist, tp->run, tp->rise, tp->grade);
+            printf("}\n");
+        }
+    }
+
     return OK;
 }
 
@@ -84,6 +130,7 @@ static CliCmd cliCmdTbl [] = {
         { "exit",       cliCmdExit },
         { "help",       cliCmdHelp },
         { "save",       cliCmdSave },
+        { "show",       cliCmdShow },
         { "sma",        cliCmdSma },
         { "summary",    cliCmdSummary },
         { "trim",       cliCmdTrim },
@@ -165,7 +212,7 @@ int cliCmdHandler(GpsTrk *pTrk, CmdArgs *pArgs)
     using_history();
 
     while (s != EXIT) {
-        line = readline("cmd? ");
+        line = readline("CLI> ");
         if ((line != NULL) && (line[0] != '\0')) {
             // Parse the command line into token
             if ((pArgs->argc = cliParseCmdLine(line, pArgs->argv)) != 0) {
