@@ -7,6 +7,7 @@
 #include <time.h>
 
 #include "cli.h"
+#include "comp.h"
 #include "const.h"
 #include "defs.h"
 #include "input.h"
@@ -29,6 +30,8 @@ static const char *help =
         "        Specifies the type of units to use in the CSV output.\n"
         "    --help\n"
         "        Show this help and exit.\n"
+        "    --no-cli\n"
+        "        Do not start the interactive CLI.\n"
         "    --quiet\n"
         "        Suppress all warning messages.\n"
         "    --version\n"
@@ -82,6 +85,8 @@ static int parseArgs(int argc, char **argv, CmdArgs *pArgs)
                 invalidArgument(arg, val);
                 return -1;
             }
+        } else if (strcmp(arg, "--no-cli") == 0) {
+                    pArgs->noCli = true;
         } else if (strcmp(arg, "--output-format") == 0) {
             val = argv[++n];
             if (strcmp(val, "csv") == 0) {
@@ -121,7 +126,6 @@ int main(int argc, char **argv)
 {
     CmdArgs cmdArgs = {0};
     GpsTrk gpsTrk = {0};
-    TrkPt *pTrkPt;
     int n;
 
     // Parse the command arguments
@@ -155,25 +159,36 @@ int main(int argc, char **argv)
 
     // Done parsing all the input files. Make sure we have
     // at least one TrkPt!
-    if ((pTrkPt = TAILQ_FIRST(&gpsTrk.trkPtList)) == NULL) {
+    if (TAILQ_FIRST(&gpsTrk.trkPtList) == NULL) {
         // Hu?
         fprintf(stderr, "ERROR: No track points found!\n");
         return -1;
     }
 
-    // Make sure the FIT includes timing data
-    if (pTrkPt->timestamp == 0.0) {
-        fprintf(stderr, "ERROR: FIT is missing timing data!\n");
+    // Unless we are processing the FIT verbatim, check its
+    // TrkPt's for duplicates and bogus values.
+    if (!cmdArgs.verbatim) {
+        if (checkTrkPts(&gpsTrk, &cmdArgs) != 0) {
+            // Hu?
+            fprintf(stderr, "ERROR: Bogus FIT data!\n");
+            return -1;
+        }
+    }
+
+    // Compute the metrics
+    if (compMetrics(&gpsTrk, &cmdArgs) != 0) {
+        // Hu?
+        fprintf(stderr, "ERROR: Failed to compute metrics!\n");
         return -1;
     }
 
-    // Make sure the FIT includes speed data
-    if (pTrkPt->speed == nilSpeed) {
-        fprintf(stderr, "WARNING: FIT is missing speed data...\n");
+    if (!cmdArgs.noCli) {
+        // Process the CLI commands
+        cliCmdHandler(&gpsTrk, &cmdArgs);
+    } else {
+        // Print summary
+        printOutput(&gpsTrk, &cmdArgs);
     }
-
-    // Process the CLI commands
-    cliCmdHandler(&gpsTrk, &cmdArgs);
 
     return 0;
 }

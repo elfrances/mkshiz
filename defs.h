@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdio.h>
 #include <sys/queue.h>
 
 #define PROG_VER_MAJOR  1
@@ -48,6 +49,7 @@ typedef enum Units {
 typedef struct CmdArgs {
     const char *inFile;     // input file name
 
+    Bool noCli;             // don't start the interactive CLI
     FILE *outFile;          // output file
     OutFmt outFmt;          // format of the output data (csv, shiz)
     Bool quiet;             // don't print any warning messages

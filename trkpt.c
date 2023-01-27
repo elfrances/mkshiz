@@ -38,6 +38,22 @@ TrkPt *newTrkPt(int index, const char *inFile, int lineNum)
     return pTrkPt;
 }
 
+TrkPt *dupTrkPt(const TrkPt *pTrkPt)
+{
+    TrkPt *pDup;
+
+    if ((pDup = calloc(1, sizeof(TrkPt))) == NULL) {
+        fprintf(stderr, "Failed to alloc TrkPt object !!!\n");
+        return NULL;
+    }
+
+    *pDup = *pTrkPt;
+    pDup->tqEntry.tqe_next = NULL;
+    pDup->tqEntry.tqe_prev = NULL;
+
+    return pDup;
+}
+
 const char *fmtTrkPtIdx(const TrkPt *pTrkPt)
 {
     static char fmtBuf[1024];

@@ -55,6 +55,27 @@ BUGS:
     Report bugs and enhancement requests to: marcelo_mourier@yahoo.com
 ```
 
+While the tool can process a FIT file directly, the most useful features are available through its interactive CLI:
+
+```
+CLI> help
+Supported CLI commands:
+
+exit                   Exit the tool
+help                   Print this help
+history                Print the command history.
+save <fmt> <file>      Save the data in the specified format and file.
+                       The output format can be: csv, gpx, shiz, tcx.
+show [<a> <b>]         Show trackpoints in plain text form.
+sma <metric> <wind>    Compute the SMA of the specified metric with the
+                       specified window size. The metric can be: elevation,
+                       grade, speed. The window size must be an odd number.
+summary [detail]       Print a summary of the data.
+trim <a> <b>           Remove the trackpoints between points 'a' and 'b'
+                       and close the distance and time gaps between them.
+undo                   Revert the last operation.
+```
+ 
 ## A note about running whatsOnFulGaz under Windows/Cygwin
 
 When running the tool under Windows/Cygwin notice that the drive letters used in path names, such as C: and D:, are replaced by the corresponding "cygdrive".  For example, the path "C:\Users\Marcelo\Documents" becomes "/cygdrive/c/Users/Marcelo/Documents", and the path "D:\FulGaz\Videos" becomes "/cygdrive/d/FulGaz/Videos".
