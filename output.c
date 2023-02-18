@@ -118,56 +118,19 @@ static void printSummary(GpsTrk *pTrk, CmdArgs *pArgs)
     }
     fprintf(pArgs->outFile, "       avgGrade: %.2lf%%\n", (pTrk->grade / pTrk->numTrkPts));
 
-#if 0
-    if (pTrk->inMask & SD_CADENCE) {
-        p = pTrk->maxCadenceTrkPt;
-        fprintf(pArgs->outFile, "     maxCadence: %d rpm @ TrkPt #%d (%s) : time = %ld s, distance = %.3lf km\n",
-                pTrk->maxCadence, p->index, fmtTrkPtIdx(p), (long) (p->timestamp - pTrk->baseTime), mToKm(p->distance));
-        p = pTrk->minCadenceTrkPt;
-        fprintf(pArgs->outFile, "     minCadence: %d rpm @ TrkPt #%d (%s) : time = %ld s, distance = %.3lf km\n",
-                pTrk->minCadence, p->index, fmtTrkPtIdx(p), (long) (p->timestamp - pTrk->baseTime), mToKm(p->distance));
-        fprintf(pArgs->outFile, "     avgCadence: %d rpm\n", (pTrk->cadence / pTrk->numTrkPts));
-    }
-    if (pTrk->inMask & SD_HR) {
-        p = pTrk->maxHeartRateTrkPt;
-        fprintf(pArgs->outFile, "          maxHR: %d bpm @ TrkPt #%d (%s) : time = %ld s, distance = %.3lf km\n",
-                pTrk->maxHeartRate, p->index, fmtTrkPtIdx(p), (long) (p->timestamp - pTrk->baseTime), mToKm(p->distance));
-        p = pTrk->minHeartRateTrkPt;
-        fprintf(pArgs->outFile, "          minHR: %d bpm @ TrkPt #%d (%s) : time = %ld s, distance = %.3lf km\n",
-                pTrk->minHeartRate, p->index, fmtTrkPtIdx(p), (long) (p->timestamp - pTrk->baseTime), mToKm(p->distance));
-        fprintf(pArgs->outFile, "          avgHR: %d bpm\n", (pTrk->heartRate / pTrk->numTrkPts));
-    }
-    if (pTrk->inMask & SD_POWER) {
-        p = pTrk->maxPowerTrkPt;
-        fprintf(pArgs->outFile, "       maxPower: %d watts @ TrkPt #%d (%s) : time = %ld s, distance = %.3lf km\n",
-                pTrk->maxPower, p->index, fmtTrkPtIdx(p), (long) (p->timestamp - pTrk->baseTime), mToKm(p->distance));
-        p = pTrk->minPowerTrkPt;
-        fprintf(pArgs->outFile, "       minPower: %d watts @ TrkPt #%d (%s) : time = %ld s, distance = %.3lf km\n",
-                pTrk->minPower, p->index, fmtTrkPtIdx(p), (long) (p->timestamp - pTrk->baseTime), mToKm(p->distance));
-        fprintf(pArgs->outFile, "       avgPower: %d watts\n", (pTrk->power / pTrk->numTrkPts));
-    }
-    if (pTrk->inMask & SD_ATEMP) {
-        p = pTrk->maxTempTrkPt;
-        fprintf(pArgs->outFile, "        maxTemp: %d C @ TrkPt #%d (%s) : time = %ld s, distance = %.3lf km\n",
-                pTrk->maxTemp, p->index, fmtTrkPtIdx(p), (long) (p->timestamp - pTrk->baseTime), mToKm(p->distance));
-        p = pTrk->minTempTrkPt;
-        fprintf(pArgs->outFile, "        minTemp: %d C @ TrkPt #%d (%s) : time = %ld s, distance = %.3lf km\n",
-                pTrk->minTemp, p->index, fmtTrkPtIdx(p), (long) (p->timestamp - pTrk->baseTime), mToKm(p->distance));
-        fprintf(pArgs->outFile, "        avgTemp: %d C\n", (pTrk->temp / pTrk->numTrkPts));
-    }
-#endif
-
-    if ((p = pTrk->maxDeltaDTrkPt) != NULL) {
-        fprintf(pArgs->outFile, "      maxDeltaD: %.3lf m @ TrkPt #%d (%s) : time = %ld s, distance = %.3lf km\n",
-                pTrk->maxDeltaD, p->index, fmtTrkPtIdx(p), (long) (p->timestamp - pTrk->baseTime), mToKm(p->distance));
-    }
-    if ((p = pTrk->maxDeltaTTrkPt) != NULL) {
-        fprintf(pArgs->outFile, "      maxDeltaT: %.3lf sec @ TrkPt #%d (%s) : time = %ld s, distance = %.3lf km\n",
-                pTrk->maxDeltaT, p->index, fmtTrkPtIdx(p), (long) (p->timestamp - pTrk->baseTime), mToKm(p->distance));
-    }
-    if ((p = pTrk->maxDeltaGTrkPt) != NULL) {
-        fprintf(pArgs->outFile, "      maxDeltaG: %.2lf%% @ TrkPt #%d (%s) : time = %ld s, distance = %.3lf km\n",
-                pTrk->maxDeltaG, p->index, fmtTrkPtIdx(p), (long) (p->timestamp - pTrk->baseTime), mToKm(p->distance));
+    if (pArgs->detail) {
+        if ((p = pTrk->maxDeltaDTrkPt) != NULL) {
+            fprintf(pArgs->outFile, "      maxDeltaD: %.3lf m @ TrkPt #%d (%s) : time = %ld s, distance = %.3lf km\n",
+                    pTrk->maxDeltaD, p->index, fmtTrkPtIdx(p), (long) (p->timestamp - pTrk->baseTime), mToKm(p->distance));
+        }
+        if ((p = pTrk->maxDeltaTTrkPt) != NULL) {
+            fprintf(pArgs->outFile, "      maxDeltaT: %.3lf sec @ TrkPt #%d (%s) : time = %ld s, distance = %.3lf km\n",
+                    pTrk->maxDeltaT, p->index, fmtTrkPtIdx(p), (long) (p->timestamp - pTrk->baseTime), mToKm(p->distance));
+        }
+        if ((p = pTrk->maxDeltaGTrkPt) != NULL) {
+            fprintf(pArgs->outFile, "      maxDeltaG: %.2lf%% @ TrkPt #%d (%s) : time = %ld s, distance = %.3lf km\n",
+                    pTrk->maxDeltaG, p->index, fmtTrkPtIdx(p), (long) (p->timestamp - pTrk->baseTime), mToKm(p->distance));
+        }
     }
 }
 

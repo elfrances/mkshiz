@@ -6,6 +6,7 @@
 #include <readline/history.h>
 
 #include "cli.h"
+#include "comp.h"
 #include "output.h"
 #include "trkpt.h"
 
@@ -110,19 +111,77 @@ static CmdStat cliCmdSma(GpsTrk *pTrk, CmdArgs *pArgs)
 
 static CmdStat cliCmdSummary(GpsTrk *pTrk, CmdArgs *pArgs)
 {
+    if ((pArgs->argc == 2) && (strcmp(pArgs->argv[1], "detail") == 0)) {
+        pArgs->detail = true;
+    }
     pArgs->outFile = stdout;
     pArgs->outFmt = nil;
     printOutput(pTrk, pArgs);
+    pArgs->detail = false;
     return OK;
 }
 
 static CmdStat cliCmdTrim(GpsTrk *pTrk, CmdArgs *pArgs)
 {
+    int from, to;
+
+    if ((pArgs->argc != 3) ||
+        (sscanf(pArgs->argv[1], "%d", &from) != 1) ||
+        (sscanf(pArgs->argv[2], "%d", &to) != 1)) {
+        printf("Syntax: trim <from> <to>\n");
+        return ERROR;
+    }
+
+    if (from > to) {
+        printf("The <from> value must be lower than the <to> value\n");
+        return ERROR;
+    }
+
+    if (to > pTrk->numTrkPts) {
+        printf("The <to> value exceeds the total number of TrkPt's (%d)\n", pTrk->numTrkPts);
+        return ERROR;
+    }
+
+    // Save current TrkPt's so that this operation
+    // can be 'undo'
+    saveTrkPts(pTrk);
+
+    {
+        TrkPt *p = TAILQ_FIRST(&pTrk->trkPtList);
+        int index = 0;
+
+        // Remove all TrkPt's in the <from>-<to> range
+        while (p != NULL) {
+            if ((p->index >= from) && (p->index <= to)) {
+                TrkPt *next = TAILQ_NEXT(p, tqEntry);
+                TAILQ_REMOVE(&pTrk->trkPtList, p, tqEntry);
+                free(p);
+                p = next;
+            } else {
+                p = TAILQ_NEXT(p, tqEntry);
+            }
+        }
+
+        // Recompute the index of all the TrkPt's
+        TAILQ_FOREACH(p, &pTrk->trkPtList, tqEntry) {
+            p->index = index++;
+        }
+
+        // Update the total number of TrkPt's
+        pTrk->numTrkPts = index;
+    }
+
     return OK;
 }
 
 static CmdStat cliCmdUndo(GpsTrk *pTrk, CmdArgs *pArgs)
 {
+    if (TAILQ_FIRST(&pTrk->savedTrkPtList) != NULL) {
+        restoreTrkPts(pTrk);
+    } else {
+        printf("Nothing to undo!\n");
+    }
+
     return OK;
 }
 
@@ -215,13 +274,13 @@ int cliCmdHandler(GpsTrk *pTrk, CmdArgs *pArgs)
     while (s != EXIT) {
         line = readline("CLI> ");
         if ((line != NULL) && (line[0] != '\0')) {
-            // Parse the command line into token
+            // Parse the command line into tokens
             if ((pArgs->argc = cliParseCmdLine(line, pArgs->argv)) != 0) {
                 // Go process the command!
                 if ((s = cliProcCmd(pTrk, pArgs)) == OK) {
                     // Add command to the history
                     add_history(line);
-                } else {
+                } else if (s == ERROR) {
                     printf("Invalid command: %s\n", line);
                 }
 

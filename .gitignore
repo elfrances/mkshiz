@@ -1,6 +1,7 @@
 .cproject
 .project
 .settings/*
+outFiles/*
 mkshiz*
 *.d
 *.o

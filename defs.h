@@ -60,6 +60,7 @@ typedef struct CmdArgs {
     // Used by the CLI
     int argc;               // number of arguments
     char *argv[MAX_ARGS];   // list of arguments
+    Bool detail;            // show detailed information
 } CmdArgs;
 
 // Sensor data bit masks
@@ -113,6 +114,9 @@ typedef struct TrkPt {
 typedef struct GpsTrk {
     // List of TrkPt's
     TAILQ_HEAD(TrkPtList, TrkPt) trkPtList;
+
+    // Saved list of TrkPt's to be able to undo an operation
+    TAILQ_HEAD(SavedTrkPtList, TrkPt) savedTrkPtList;
 
     // Number of TrkPt's in trkPtList
     int numTrkPts;

@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "comp.h"
 #include "const.h"
@@ -161,50 +162,62 @@ static double compBearing(const TrkPt *p1, const TrkPt *p2)
     return fmod((theta / degToRad + 360.0), 360.0); // in degrees decimal (0-359.99)
 }
 
-static int updateMinMaxValues(GpsTrk *pTrk, TrkPt *p2)
+static int computeMinMaxValues(GpsTrk *pTrk)
 {
-    if (p2->speed > pTrk->maxSpeed) {
-         pTrk->maxSpeed = p2->speed;
-         pTrk->maxSpeedTrkPt = p2;
-    } else if ((p2->speed != 0) && (p2->speed < pTrk->minSpeed)) {
-        pTrk->minSpeed = p2->speed;
-        pTrk->minSpeedTrkPt = p2;
-    }
+    TrkPt *p1 = TAILQ_FIRST(&pTrk->trkPtList);  // previous TrkPt
+    TrkPt *p2 = TAILQ_NEXT(p1, tqEntry);    // current TrkPt
 
-    if (p2->elevation > pTrk->maxElev) {
-         pTrk->maxElev = p2->elevation;
-         pTrk->maxElevTrkPt = p2;
-    } else if (p2->elevation < pTrk->minElev) {
-        pTrk->minElev = p2->elevation;
-        pTrk->minElevTrkPt = p2;
-    }
+    // Initialize the min/max values
+    pTrk->minSpeed = +999.9;
+    pTrk->maxSpeed = -999.9;
+    pTrk->minElev = +99999.9;
+    pTrk->maxElev = -99999.9;
+    pTrk->minGrade = +99.9;
+    pTrk->maxGrade = -99.9;
 
-    if (p2->grade > pTrk->maxGrade) {
-         pTrk->maxGrade = p2->grade;
-         pTrk->maxGradeTrkPt = p2;
-    } else if (p2->grade < pTrk->minGrade) {
-        pTrk->minGrade = p2->grade;
-        pTrk->minGradeTrkPt = p2;
-    }
+    while (p2 != NULL) {
+        if (p2->speed > pTrk->maxSpeed) {
+             pTrk->maxSpeed = p2->speed;
+             pTrk->maxSpeedTrkPt = p2;
+        } else if ((p2->speed != 0) && (p2->speed < pTrk->minSpeed)) {
+            pTrk->minSpeed = p2->speed;
+            pTrk->minSpeedTrkPt = p2;
+        }
 
-    // Update the max grade change
-    if (p2->deltaG > pTrk->maxDeltaG) {
-        pTrk->maxDeltaG = p2->deltaG;
-        pTrk->maxDeltaGTrkPt = p2;
-    }
+        if (p2->elevation > pTrk->maxElev) {
+             pTrk->maxElev = p2->elevation;
+             pTrk->maxElevTrkPt = p2;
+        } else if (p2->elevation < pTrk->minElev) {
+            pTrk->minElev = p2->elevation;
+            pTrk->minElevTrkPt = p2;
+        }
 
-    // Update the rolling values of the elevation gain
-    // and grade, to compute the averages for the
-    // activity.
-    if (p2->rise >= 0.0) {
-        pTrk->elevGain += p2->rise;
-    } else {
-        pTrk->elevLoss += fabs(p2->rise);
-    }
-    pTrk->grade += p2->grade;
+        if (p2->grade > pTrk->maxGrade) {
+             pTrk->maxGrade = p2->grade;
+             pTrk->maxGradeTrkPt = p2;
+        } else if (p2->grade < pTrk->minGrade) {
+            pTrk->minGrade = p2->grade;
+            pTrk->minGradeTrkPt = p2;
+        }
 
-    // Update the activity's end time
-    pTrk->endTime = p2->timestamp;
+        // Update the max grade change
+        if (p2->deltaG > pTrk->maxDeltaG) {
+            pTrk->maxDeltaG = p2->deltaG;
+            pTrk->maxDeltaGTrkPt = p2;
+        }
+
+        // Update the rolling values of the elevation gain
+        // and grade, to compute the averages for the
+        // activity.
+        if (p2->rise >= 0.0) {
+            pTrk->elevGain += p2->rise;
+        } else {
+            pTrk->elevLoss += fabs(p2->rise);
+        }
+        pTrk->grade += p2->grade;
+
+        p2 = nxtTrkPt(&p1, p2);
+    }
 
     return 0;
 }
@@ -214,16 +227,12 @@ int compMetrics(GpsTrk *pTrk, const CmdArgs *pArgs)
     TrkPt *p1 = TAILQ_FIRST(&pTrk->trkPtList);  // previous TrkPt
     TrkPt *p2 = TAILQ_NEXT(p1, tqEntry);    // current TrkPt
 
+    // At this point p1 points to the first trackpoint in the
+    // track, which is used as the baseline...
+    p1->grade = 0.0;
+
     // Set the activity's start time
     pTrk->startTime = p1->timestamp;
-
-    // Initialize the min/max values
-    pTrk->minSpeed = +999.9;
-    pTrk->maxSpeed = -999.9;
-    pTrk->minElev = +99999.9;
-    pTrk->maxElev = -99999.9;
-    pTrk->minGrade = +99.9;
-    pTrk->maxGrade = -99.9;
 
     // Compute the distance, elevation diff, speed, and grade
     // between each pair of points...
@@ -401,10 +410,52 @@ int compMetrics(GpsTrk *pTrk, const CmdArgs *pArgs)
         // Compute the grade change
         p2->deltaG = fabs(p2->grade - p1->grade);
 
-        // Update the activity's min/max values
-        updateMinMaxValues(pTrk, p2);
+        // Update the activity's end time
+        pTrk->endTime = p2->timestamp;
 
         p2 = nxtTrkPt(&p1, p2);
+    }
+
+    // Compute the activity's min/max values
+    computeMinMaxValues(pTrk);
+
+    return 0;
+}
+
+int saveTrkPts(GpsTrk *pTrk)
+{
+    TrkPt *p;
+
+    // Delete all TrkPt's from the saved list
+    while ((p = TAILQ_FIRST(&pTrk->savedTrkPtList)) != NULL) {
+        TAILQ_REMOVE(&pTrk->savedTrkPtList, p, tqEntry);
+        free(p);
+    }
+
+    // Clone all TrkPt's in the working list
+    TAILQ_FOREACH(p, &pTrk->trkPtList, tqEntry) {
+        TrkPt *clone = dupTrkPt(p);
+        TAILQ_INSERT_TAIL(&pTrk->savedTrkPtList, clone, tqEntry);
+    }
+
+    return 0;
+}
+
+int restoreTrkPts(GpsTrk *pTrk)
+{
+    TrkPt *p = TAILQ_FIRST(&pTrk->trkPtList);
+
+    // Delete all TrkPt's from the working list
+    do {
+        p = remTrkPt(pTrk, p);
+    } while (p != NULL);
+
+    // Move all the saved TrkPt's to the working list
+    pTrk->numTrkPts = 0;
+    while ((p = TAILQ_FIRST(&pTrk->savedTrkPtList)) != NULL) {
+        TAILQ_REMOVE(&pTrk->savedTrkPtList, p, tqEntry);
+        TAILQ_INSERT_TAIL(&pTrk->trkPtList, p, tqEntry);
+        pTrk->numTrkPts++;
     }
 
     return 0;

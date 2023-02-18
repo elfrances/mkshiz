@@ -134,6 +134,7 @@ int main(int argc, char **argv)
     }
 
     TAILQ_INIT(&gpsTrk.trkPtList);
+    TAILQ_INIT(&gpsTrk.savedTrkPtList);
 
     // Process each FIT input file
     while (n < argc) {
