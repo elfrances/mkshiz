@@ -183,12 +183,12 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    if (!cmdArgs.noCli) {
-        // Process the CLI commands
-        cliCmdHandler(&gpsTrk, &cmdArgs);
-    } else {
+    if (cmdArgs.noCli) {
         // Print summary
         printOutput(&gpsTrk, &cmdArgs);
+    } else {
+        // Process the CLI commands
+        cliCmdHandler(&gpsTrk, &cmdArgs);
     }
 
     return 0;

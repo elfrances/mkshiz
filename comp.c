@@ -246,6 +246,9 @@ int compMetrics(GpsTrk *pTrk, const CmdArgs *pArgs)
         absRise = fabs(p2->rise);
 
         if (p2->distance != 0.0) {
+            // The TrkPt includes the "distance from start" value,
+            // so the incremental distance "dist" between TrkPt's
+            // can be computed by simple subtraction.
             if ((p2->dist = p2->distance - p1->distance) == 0.0) {
                 // Stopped?
                 if (!pArgs->verbatim) {
@@ -285,6 +288,9 @@ int compMetrics(GpsTrk *pTrk, const CmdArgs *pArgs)
                 p2->run = p2->dist; // assume a null grade
             }
         } else {
+            // The TrkPt doesn't include the "distance from start" value,
+            // so we need to compute it ourselves...
+
             // Compute the horizontal distance "run" between
             // the two points, based on their latitude and
             // longitude values.
@@ -313,7 +319,7 @@ int compMetrics(GpsTrk *pTrk, const CmdArgs *pArgs)
                 continue;
             }
 
-            // Compute the actual distance traveled between
+            // Compute the incremental distance "dist" between
             // the two points.
             if (absRise == 0.0) {
                 // When riding on the flats, dist equals run!
@@ -324,6 +330,7 @@ int compMetrics(GpsTrk *pTrk, const CmdArgs *pArgs)
                 p2->dist = sqrt((p2->run * p2->run) + (absRise * absRise));
             }
 
+            // Compute the "distance from start" value
             p2->distance = p1->distance + p2->dist;
         }
 
@@ -372,9 +379,6 @@ int compMetrics(GpsTrk *pTrk, const CmdArgs *pArgs)
             }
         }
 
-        // Update the total distance for the activity
-        pTrk->distance += p2->dist;
-
         // Update the total time for the activity
         pTrk->time += p2->deltaT;
 
@@ -410,6 +414,9 @@ int compMetrics(GpsTrk *pTrk, const CmdArgs *pArgs)
         // Compute the grade change
         p2->deltaG = fabs(p2->grade - p1->grade);
 
+        // Update the total distance for the activity
+        pTrk->distance = p2->distance;
+
         // Update the activity's end time
         pTrk->endTime = p2->timestamp;
 
@@ -418,6 +425,48 @@ int compMetrics(GpsTrk *pTrk, const CmdArgs *pArgs)
 
     // Compute the activity's min/max values
     computeMinMaxValues(pTrk);
+
+    return 0;
+}
+
+static double smaGetVal(const TrkPt *p, SmaMetric smaMetric)
+{
+    if (smaMetric == elevation) {
+        return (double) p->elevation;
+    } else if (smaMetric == grade) {
+        return (double) p->grade;
+    } else {
+        return p->speed;
+    }
+}
+
+static void smaSetVal(TrkPt *p, SmaMetric smaMetric, double value)
+{
+    if (smaMetric == elevation) {
+        p->elevation = value;
+    } else if (smaMetric == grade) {
+        p->grade = value;
+    } else {
+        p->speed = value;
+    }
+}
+
+// Compute the Simple Moving Average of the specified metric
+int compSMA(GpsTrk *pTrk, const CmdArgs *pArgs)
+{
+    TrkPt *p;
+
+    TAILQ_FOREACH(p, &pTrk->trkPtList, tqEntry) {
+        if (p->index >= pArgs->smaWindow) {
+            TrkPt *tp = p;
+            double sum = 0.0;
+            for (int n = 0; n < pArgs->smaWindow; n++) {
+                sum += smaGetVal(tp, pArgs->smaMetric);
+                tp = TAILQ_PREV(tp, TrkPtList, tqEntry);
+            }
+            smaSetVal(p, pArgs->smaMetric, (sum / pArgs->smaWindow));
+        }
+    }
 
     return 0;
 }
@@ -457,6 +506,9 @@ int restoreTrkPts(GpsTrk *pTrk)
         TAILQ_INSERT_TAIL(&pTrk->trkPtList, p, tqEntry);
         pTrk->numTrkPts++;
     }
+
+    // Update the start time
+    pTrk->startTime = TAILQ_FIRST(&pTrk->trkPtList)->timestamp;
 
     return 0;
 }

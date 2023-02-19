@@ -22,10 +22,10 @@ static const char *cliHelp = \
     "exit                   Exit the tool\n"
     "help                   Print this help\n"
     "history                Print the command history.\n"
-    "save <file> [<fmt>]    Save the data in the specified format and file.\n"
+    "save <file> [<format>] Save the data in the specified format and file.\n"
     "                       The output format can be: csv, gpx, shiz, tcx.\n"
     "show [<a> <b>]         Show trackpoints in plain text form.\n"
-    "sma <metric> <wind>    Compute the SMA of the specified metric with the\n"
+    "sma <metric> <window>  Compute the SMA of the specified metric with the\n"
     "                       specified window size. The metric can be: elevation,\n"
     "                       grade, speed. The window size must be an odd number.\n"
     "summary [detail]       Print a summary of the data.\n"
@@ -67,6 +67,44 @@ static CmdStat cliCmdHelp(GpsTrk *pTrk, CmdArgs *pArgs)
 
 static CmdStat cliCmdSave(GpsTrk *pTrk, CmdArgs *pArgs)
 {
+    if (pArgs->argc < 2) {
+        printf("Syntax: save <file> [<format>]\n");
+        return ERROR;
+    }
+
+    // Open the output file for writing
+    if ((pArgs->outFile = fopen(pArgs->argv[1], "w")) == NULL) {
+        return errMsg("Can't open output file");
+    }
+
+    if (pArgs->argc == 3) {
+        char *outFmt = pArgs->argv[2];
+        if (strcmp(outFmt, "csv") == 0) {
+            pArgs->outFmt = csv;
+        } else if (strcmp(outFmt, "gpx") == 0) {
+            pArgs->outFmt = gpx;
+        } else if (strcmp(outFmt, "shiz") == 0) {
+            pArgs->outFmt = shiz;
+        } else if (strcmp(outFmt, "tcx") == 0) {
+            pArgs->outFmt = tcx;
+        } else {
+            return invArgMsg(outFmt, NULL);
+        }
+    } else {
+        pArgs->outFmt = csv;
+    }
+
+    if (pArgs->outFmt == csv) {
+        // Use HH:MM:SS time format so that it is easy
+        // to correlate the TrkPt's with the MP4 video.
+        pArgs->tsFmt = hms;
+    }
+
+    printOutput(pTrk, pArgs);
+
+    fclose(pArgs->outFile);
+    pArgs->outFile = NULL;
+
     return OK;
 }
 
@@ -102,10 +140,37 @@ static CmdStat cliCmdShow(GpsTrk *pTrk, CmdArgs *pArgs)
 
 static CmdStat cliCmdSma(GpsTrk *pTrk, CmdArgs *pArgs)
 {
+    char *smaMetric = pArgs->argv[1];
+    char *smaWindow = pArgs->argv[2];
+
     if (pArgs->argc != 3) {
         printf("Syntax: sma <metric> <window>\n");
         return ERROR;
     }
+
+    if (strcmp(smaMetric, "elevation") == 0) {
+        pArgs->smaMetric = elevation;
+    } else if (strcmp(smaMetric, "grade") == 0) {
+        pArgs->smaMetric = grade;
+    } else if (strcmp(smaMetric, "speed") == 0) {
+        pArgs->smaMetric = speed;
+    } else {
+        return invArgMsg(smaMetric, NULL);
+    }
+
+    if ((sscanf(smaWindow, "%d", &pArgs->smaWindow) != 1) ||
+        (pArgs->smaWindow < 3)) {
+        return invArgMsg(smaWindow, NULL);
+    }
+
+    // Save current TrkPt's so that this operation
+    // can be 'undo'
+    saveTrkPts(pTrk);
+
+    // Compute the SMA of the specified metric over
+    // the specified window.
+    compSMA(pTrk, pArgs);
+
     return OK;
 }
 
@@ -148,17 +213,51 @@ static CmdStat cliCmdTrim(GpsTrk *pTrk, CmdArgs *pArgs)
 
     {
         TrkPt *p = TAILQ_FIRST(&pTrk->trkPtList);
+        Bool discTrkPt = false;
+        Bool trimTrkPts = false;
+        double trimmedTime = 0.0;
+        double trimmedDistance = 0.0;
+        TrkPt *p0 = NULL;
         int index = 0;
 
-        // Remove all TrkPt's in the <from>-<to> range
+        // Remove all TrkPt's in the <from>-<to> range and
+        // close the distance and time gaps.
         while (p != NULL) {
-            if ((p->index >= from) && (p->index <= to)) {
-                TrkPt *next = TAILQ_NEXT(p, tqEntry);
-                TAILQ_REMOVE(&pTrk->trkPtList, p, tqEntry);
-                free(p);
-                p = next;
+            discTrkPt = false;
+
+            // Do we need to trim out this TrkPt?
+            if (p->index == from) {
+                // Start trimming
+                trimTrkPts = true;
+                pTrk->numTrimTrkPts++;
+                discTrkPt = true;
+                p0 = p; // set baseline
+            } else if (p->index == to) {
+                // Stop trimming
+                trimTrkPts = false;
+                trimmedTime = p->timestamp - p0->timestamp;     // total time trimmed out
+                trimmedDistance = p->distance - p0->distance;   // total distance trimmed out
+                pTrk->numTrimTrkPts++;
+                discTrkPt = true;
+            } else if (trimTrkPts) {
+                // Trim this point
+                pTrk->numTrimTrkPts++;
+                discTrkPt = true;
+            }
+
+            // Discard?
+            if (discTrkPt) {
+                // Remove this TrkPt from the list
+                p = remTrkPt(pTrk, p);
             } else {
-                p = TAILQ_NEXT(p, tqEntry);
+                // If we trimmed out some previous TrkPt's, then we
+                // need to adjust the timestamp and distance values
+                // of this TrkPt so as to "close the gap".
+                if (p0 != NULL) {
+                    p->timestamp -= trimmedTime;
+                    p->distance -= trimmedDistance;
+                }
+                p = nxtTrkPt(NULL, p);
             }
         }
 
@@ -169,6 +268,12 @@ static CmdStat cliCmdTrim(GpsTrk *pTrk, CmdArgs *pArgs)
 
         // Update the total number of TrkPt's
         pTrk->numTrkPts = index;
+
+        // Update the start time
+        pTrk->startTime = TAILQ_FIRST(&pTrk->trkPtList)->timestamp;
+
+        // Update the total distance
+        pTrk->distance = TAILQ_LAST(&pTrk->trkPtList, TrkPtList)->distance - TAILQ_FIRST(&pTrk->trkPtList)->distance;
     }
 
     return OK;
@@ -276,11 +381,11 @@ int cliCmdHandler(GpsTrk *pTrk, CmdArgs *pArgs)
         if ((line != NULL) && (line[0] != '\0')) {
             // Parse the command line into tokens
             if ((pArgs->argc = cliParseCmdLine(line, pArgs->argv)) != 0) {
+                // Add command to the history
+                add_history(line);
+
                 // Go process the command!
-                if ((s = cliProcCmd(pTrk, pArgs)) == OK) {
-                    // Add command to the history
-                    add_history(line);
-                } else if (s == ERROR) {
+                if ((s = cliProcCmd(pTrk, pArgs)) == ERROR) {
                     printf("Invalid command: %s\n", line);
                 }
 

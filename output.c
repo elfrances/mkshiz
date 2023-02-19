@@ -154,8 +154,6 @@ static int csvTemp(int temp, const CmdArgs *pArgs)
     return (pArgs->units == metric) ? temp : (temp * 9 / 5) + 32.0;
 }
 
-// NOTE: if you change the format of the CSV output, make sure
-// you also change the expected format in parseCsvFile() !!!
 static void printCsvFmt(GpsTrk *pTrk, CmdArgs *pArgs)
 {
     TrkPt *p;
@@ -164,25 +162,22 @@ static void printCsvFmt(GpsTrk *pTrk, CmdArgs *pArgs)
     fprintf(pArgs->outFile, "%s\n", csvBannerLine);
 
     TAILQ_FOREACH(p, &pTrk->trkPtList, tqEntry) {
-        double timeStamp = (p->adjTime != 0.0) ? p->adjTime : p->timestamp;    // use the adjusted timestamp if there is one
-        double distance = p->distance - pTrk->baseDistance;
-
         fprintf(pArgs->outFile, "%d,%s,%d,%s,",
-                p->index,                               // <trkPt>
-                p->inFile,                              // <inFile>
-                p->lineNum,                             // <line#>
-                fmtTimeStamp(timeStamp, pTrk->baseTime, pArgs->tsFmt));   // <time>
+                p->index,                                       // <trkPt>
+                p->inFile,                                      // <inFile>
+                p->lineNum,                                     // <line#>
+                fmtTimeStamp(p->timestamp, pTrk->startTime, pArgs->tsFmt));   // <time>
         fprintf(pArgs->outFile, "%.10lf,%.10lf,%.3lf,%.3lf,%.3lf,",
-                p->latitude,                            // <lat> [decimal degrees]
-                p->longitude,                           // <lon> [decimal degrees]
-                csvElev(p->elevation, pArgs),           // <ele> [meters/feet]
-                csvDist(mToKm(distance), pArgs),        // <distance> [km/miles]
-                csvSpeed(mpsToKph(p->speed), pArgs));   // <speed> [kph/mph]
+                p->latitude,                                    // <lat> [decimal degrees]
+                p->longitude,                                   // <lon> [decimal degrees]
+                csvElev(p->elevation, pArgs),                   // <ele> [meters/feet]
+                csvDist(mToKm(p->distance), pArgs),             // <distance> [km/miles]
+                csvSpeed(mpsToKph(p->speed), pArgs));           // <speed> [kph/mph]
         fprintf(pArgs->outFile, "%d,%d,%d,%d\n",
-                p->power,                               // <power> [watts]
-                csvTemp(p->ambTemp, pArgs),             // <atemp> [C/F degrees]
-                p->cadence,                             // <cadence> [RPM]
-                p->heartRate);                          // <hr> [BPM]
+                p->power,                                       // <power> [watts]
+                csvTemp(p->ambTemp, pArgs),                     // <atemp> [C/F degrees]
+                p->cadence,                                     // <cadence> [RPM]
+                p->heartRate);                                  // <hr> [BPM]
     }
 }
 
@@ -299,7 +294,7 @@ static void printShizFmt(GpsTrk *pTrk, CmdArgs *pArgs)
     // This format is valid as of FulGaz version 4.2.15
     // Duration is in hh:mm:ss, distance is in kilometers,
     // elevation is in meters, and speed is in km/h.
-    fprintf(pArgs->outFile, "{\"extra\":{\"duration\":\"%s\",\"distance\":%.5lf,\"toughness\":\"%d\",\"elevation_gain\":%u,\"date_processed\":\"%s\",\"speed_filter\":\"%d\",\"elevation_filter\":\"%d\",\"grade_filter\":\"%d\",\"timeshift\":\"%d\"},\"gpx\":{\"trk\":{\"trkseg\":{\"trkpt\":[\n",
+    fprintf(pArgs->outFile, "{\"extra\":{\"duration\":\"%s\",\"distance\":%.5lf,\"toughness\":\"%d\",\"elevation_gain\":%u,\"date_processed\":\"%s\",\"speed_filter\":\"%d\",\"elevation_filter\":\"%d\",\"grade_filter\":\"%d\",\"timeshift\":\"%d\"},\"gpx\":{\"trk\":{\"trkseg\":{\"trkpt\":[",
             fmtTimeStamp((endTime - startTime), 0, hms), mToKm(pTrk->distance), toughness, (unsigned) pTrk->elevGain, dateBuf, speed_filter, elevation_filter, grade_filter, timeshift);
 
     TAILQ_FOREACH(p, &pTrk->trkPtList, tqEntry) {
@@ -307,8 +302,8 @@ static void printShizFmt(GpsTrk *pTrk, CmdArgs *pArgs)
         // while all the other ones are printed on separate
         // lines...
 
-        fprintf(pArgs->outFile, "{\"-lon\":\"%.7lf\",\"-lat\":\"%.7lf\",\"speed\":\"%.1lf\",\"ele\":\"%.3lf\",\"distance\":\"%.5lf\",\"bearing\":\"%.2lf\",\"slope\":\"%.1lf\",\"time\":\"%s\",\"index\":%u,\"cadence\":%u,\"p\":%u}\n",
-                p->longitude, p->latitude, mpsToKph(p->speed), p->elevation, mToKm(p->distance), p->bearing, p->grade, fmtTimeStamp((p->timestamp - startTime), 0, hms), p->index, p->cadence, 0);
+        fprintf(pArgs->outFile, "{\"-lon\":\"%.7lf\",\"-lat\":\"%.7lf\",\"speed\":\"%.1lf\",\"ele\":\"%.3lf\",\"distance\":\"%.5lf\",\"bearing\":\"%.2lf\",\"slope\":\"%.1lf\",\"time\":\"%s\",\"index\":%u,\"cadence\":%u,\"p\":%u}%s",
+                p->longitude, p->latitude, mpsToKph(p->speed), p->elevation, mToKm(p->distance), p->bearing, p->grade, fmtTimeStamp((p->timestamp - startTime), 0, hms), p->index, p->cadence, 0, (TAILQ_NEXT(p, tqEntry) != NULL) ? ",\n" : "");
     }
 
     fprintf(pArgs->outFile, "]}},\"seg\":[]}}\n");

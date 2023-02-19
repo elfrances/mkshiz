@@ -44,6 +44,13 @@ typedef enum Units {
     imperial = 2,   // feet, mph, farenheit
 } Units;
 
+// Metric used for the SMA
+typedef enum SmaMetric {
+    elevation = 1,      // elevation
+    grade = 2,          // grade
+    speed = 3,          // speed
+} SmaMetric;
+
 #define MAX_ARGS    8
 
 typedef struct CmdArgs {
@@ -61,6 +68,8 @@ typedef struct CmdArgs {
     int argc;               // number of arguments
     char *argv[MAX_ARGS];   // list of arguments
     Bool detail;            // show detailed information
+    SmaMetric smaMetric;    // metric to use for the SMA
+    int smaWindow;          // SMA window size
 } CmdArgs;
 
 // Sensor data bit masks
