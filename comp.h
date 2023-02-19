@@ -11,6 +11,9 @@ extern int compMetrics(GpsTrk *pTrk, const CmdArgs *pArgs);
 // Compute the Simple Moving Average of the specified metric
 extern int compSMA(GpsTrk *pTrk, const CmdArgs *pArgs);
 
+// Compute the min/avg/max values
+extern int computeMinMaxValues(GpsTrk *pTrk);
+
 // Save the TrkPt's so that they can be restored if
 // needed.
 extern int saveTrkPts(GpsTrk *pTrk);

@@ -76,60 +76,13 @@ int checkTrkPts(GpsTrk *pTrk, const CmdArgs *pArgs)
     return 0;
 }
 
-/*
- *   Consecutive points P1 and P2 in the track define a pseudo-triangle,
- *   where the base is the horizontal distance "run", the height is the
- *   vertical distance "rise", and the hypotenuse is the actual distance
- *   traveled by the rider between the two points. The figure is not an
- *   exact triangle, because the "run" is not a straight line, but rather
- *   the great-circle distance over the Earth's surface. But when the two
- *   points are "close together", as recorded during a slow speed activity
- *   like cycling, when the sample points are spaced apart by just 1 sec,
- *   we can assume the run is a straight line, and hence we are dealing
- *   with a rectangular triangle.
- *
- *                                 + P2
- *                                /|
- *                               / |
- *                         dist /  | rise
- *                             /   |
- *                            /    |
- *                        P1 +-----+
- *                             run
- *
- *   Assuming the angle at P1, between "dist" and "run", is "theta", then
- *   the following equations describe the relationship between the various
- *   values:
- *
- *   slope = rise / run = tan(theta)
- *
- *   dist^2 = run^2 + rise^2
- *
- *   dist = speed * (t2 - t1)
- *
- *   The "rise" is simply the elevation (altitude) difference between the
- *   two points. In a consumer-level GPS device, the error in the elevation
- *   value can be 3X the error in the latitude/longitude values. The
- *   following article has useful info about the elevation measurement:
- *
- *   https://eos-gnss.com/knowledge-base/articles/elevation-for-beginners
- *
- *   Having an actual speed sensor on the bike during a cycling activity is
- *   helpful because that way "dist" can be easily an accurately computed
- *   from the speed value and the time difference, which is typically fixed
- *   at 1 second. If no speed sensor is available, the "dist" value needs
- *   to be computed from the "run" and "rise" values, using Pythagoras's
- *   Theorem, where the "run" value is computed from the latitude/longitude
- *   using the Haversine formula.
- */
-
 // Compute the great-circle distance (in meters) between two
 // track points using the Haversine formula. See below for
 // the details:
 //
 //   https://en.wikipedia.org/wiki/Haversine_formula
 //
-static double compDistance(const TrkPt *p1, const TrkPt *p2)
+static double compHaversine(const TrkPt *p1, const TrkPt *p2)
 {
     const double two = (double) 2.0;
     double phi1 = p1->latitude * degToRad;  // p1's latitude in radians
@@ -162,7 +115,7 @@ static double compBearing(const TrkPt *p1, const TrkPt *p2)
     return fmod((theta / degToRad + 360.0), 360.0); // in degrees decimal (0-359.99)
 }
 
-static int computeMinMaxValues(GpsTrk *pTrk)
+int computeMinMaxValues(GpsTrk *pTrk)
 {
     TrkPt *p1 = TAILQ_FIRST(&pTrk->trkPtList);  // previous TrkPt
     TrkPt *p2 = TAILQ_NEXT(p1, tqEntry);    // current TrkPt
@@ -174,6 +127,19 @@ static int computeMinMaxValues(GpsTrk *pTrk)
     pTrk->maxElev = -99999.9;
     pTrk->minGrade = +99.9;
     pTrk->maxGrade = -99.9;
+
+    // Reset max delta values
+    pTrk->maxDeltaD = 0.0;
+    pTrk->maxDeltaDTrkPt = NULL;
+    pTrk->maxDeltaG = 0.0;
+    pTrk->maxDeltaGTrkPt = NULL;
+    pTrk->maxDeltaT = 0.0;
+    pTrk->maxDeltaTTrkPt = NULL;
+
+    // Reset rolling sum values
+    pTrk->elevGain = 0.0;
+    pTrk->elevLoss = 0.0;
+    pTrk->grade = 0.0;
 
     while (p2 != NULL) {
         if (p2->speed > pTrk->maxSpeed) {
@@ -200,10 +166,22 @@ static int computeMinMaxValues(GpsTrk *pTrk)
             pTrk->minGradeTrkPt = p2;
         }
 
-        // Update the max grade change
+        // Update the max dist value
+        if (p2->dist > pTrk->maxDeltaD) {
+            pTrk->maxDeltaD = p2->dist;
+            pTrk->maxDeltaDTrkPt = p2;
+        }
+
+        // Update the max absolute grade change
         if (p2->deltaG > pTrk->maxDeltaG) {
             pTrk->maxDeltaG = p2->deltaG;
             pTrk->maxDeltaGTrkPt = p2;
+        }
+
+        // Update the max time interval
+        if (p2->deltaT > pTrk->maxDeltaT) {
+            pTrk->maxDeltaT = p2->deltaT;
+            pTrk->maxDeltaTTrkPt = p2;
         }
 
         // Update the rolling values of the elevation gain
@@ -221,6 +199,58 @@ static int computeMinMaxValues(GpsTrk *pTrk)
 
     return 0;
 }
+
+/* Consecutive points P1 and P2 in the track define a pseudo-triangle,
+ * where the base is the horizontal distance "run", the height is the
+ * vertical distance "rise", and the hypotenuse is the actual distance
+ * traveled between the two points.
+ *
+ * The figure is not an exact triangle, because the "run" is not a straight
+ * line, but rather the great-circle distance over the Earth's surface.
+ * But when the two points are "close together", as during a slow speed
+ * activity like cycling (when the sample points are spaced apart by just
+ * 1 second) we can assume the run is a straight line, and hence we are
+ * dealing with a rectangular triangle.
+ *
+ *                                 + P2
+ *                                /|
+ *                               / |
+ *                         dist /  | rise
+ *                             /   |
+ *                            /    |
+ *                        P1 +-----+
+ *                             run
+ *
+ *   Assuming the angle at P1, between "dist" and "run", is "theta", then
+ *   the following equations describe the relationship between the various
+ *   values:
+ *
+ *   slope = rise / run = tan(theta)
+ *
+ *   dist^2 = run^2 + rise^2
+ *
+ *   dist = speed * (t2 - t1)
+ *
+ *   The "rise" is simply the elevation gain between the two points. In a
+ *   consumer-level GPS device, the error in the elevation value can be 3X
+ *   the error in the latitude/longitude values. And because the "rise" is
+ *   used to compute the slope, the calculated slope value is also subject
+ *   to error.
+ *
+ *   Having an actual speed sensor on the bike during a cycling activity is
+ *   helpful because that way the "dist" value can be easily an accurately
+ *   computed from the speed value and the time difference, which is typically
+ *   fixed at 1 second. If no speed sensor is available, the "dist" value needs
+ *   to be computed from the "run" and "rise" values, using Pythagoras's
+ *   Theorem, where the "run" value is computed from the latitude/longitude
+ *   using the Haversine formula.
+ *
+ *   References:
+ *
+ *   https://eos-gnss.com/knowledge-base/articles/elevation-for-beginners
+ *   https://en.wikipedia.org/wiki/Haversine_formula
+ *
+ */
 
 int compMetrics(GpsTrk *pTrk, const CmdArgs *pArgs)
 {
@@ -294,7 +324,7 @@ int compMetrics(GpsTrk *pTrk, const CmdArgs *pArgs)
             // Compute the horizontal distance "run" between
             // the two points, based on their latitude and
             // longitude values.
-            if ((p2->run = compDistance(p1, p2)) == 0.0) {
+            if ((p2->run = compHaversine(p1, p2)) == 0.0) {
                 // Stopped?
                 if (!pArgs->verbatim) {
                     if (!pArgs->quiet) {
@@ -342,12 +372,6 @@ int compMetrics(GpsTrk *pTrk, const CmdArgs *pArgs)
             dumpTrkPts(pTrk, p2, 2, 0);
         }
 
-        // Update the max dist value
-        if (p2->dist > pTrk->maxDeltaD) {
-            pTrk->maxDeltaD = p2->dist;
-            pTrk->maxDeltaDTrkPt = p2;
-        }
-
         // Compute the time interval between the two points.
         // Typically fixed at 1-sec, but some GPS devices (e.g.
         // Garmin Edge) may use a "smart" recording mode that
@@ -363,12 +387,6 @@ int compMetrics(GpsTrk *pTrk, const CmdArgs *pArgs)
             dumpTrkPts(pTrk, p2, 2, 0);
         }
 
-        // Update the max time interval between two points
-        if (p2->deltaT > pTrk->maxDeltaT) {
-            pTrk->maxDeltaT = p2->deltaT;
-            pTrk->maxDeltaTTrkPt = p2;
-        }
-
         if ((p2->speed == nilSpeed) || (p2->speed == 0.0)) {
             // Compute the speed (in m/s) as "distance over time"
             p2->speed = p2->dist / p2->deltaT;
@@ -382,20 +400,18 @@ int compMetrics(GpsTrk *pTrk, const CmdArgs *pArgs)
         // Update the total time for the activity
         pTrk->time += p2->deltaT;
 
-        if (p2->grade == nilGrade) {
-            // Compute the grade as "rise over run". Notice
-            // that the grade value may get updated later.
-            // Guard against points with run=0, which can
-            // happen when using the "--verbose" option...
-            if (p2->run != 0.0) {
-                p2->grade = (p2->rise * 100.0) / p2->run;   // in [%]
-            } else {
-                if (!pArgs->quiet) {
-                    fprintf(stderr, "WARNING: TrkPt #%d (%s) has a null run value !\n",
-                            p2->index, fmtTrkPtIdx(p2));
-                }
-                p2->grade = p1->grade;  // carry over the previous grade value
+        // Compute the grade as "rise over run". Notice
+        // that the grade value may get updated later.
+        // Guard against points with run=0, which can
+        // happen when using the "--verbose" option...
+        if (p2->run != 0.0) {
+            p2->grade = (p2->rise * 100.0) / p2->run;   // in [%]
+        } else {
+            if (!pArgs->quiet) {
+                fprintf(stderr, "WARNING: TrkPt #%d (%s) has a null run value !\n",
+                        p2->index, fmtTrkPtIdx(p2));
             }
+            p2->grade = p1->grade;  // carry over the previous grade value
         }
 
         // Sanity check the grade value
@@ -411,7 +427,7 @@ int compMetrics(GpsTrk *pTrk, const CmdArgs *pArgs)
         // Compute the bearing
         p2->bearing = compBearing(p1, p2);
 
-        // Compute the grade change
+        // Compute the absolute grade change
         p2->deltaG = fabs(p2->grade - p1->grade);
 
         // Update the total distance for the activity
