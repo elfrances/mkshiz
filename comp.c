@@ -5,9 +5,10 @@
 
 #include "comp.h"
 #include "const.h"
+#include "sgfilter.h"
 #include "trkpt.h"
 
-// Check the TrkPt's for duplicates and bogus values
+// Check the TrkPt's for missing/duplicate/bogus values
 int checkTrkPts(GpsTrk *pTrk, const CmdArgs *pArgs)
 {
     TrkPt *p1 = TAILQ_FIRST(&pTrk->trkPtList);  // previous TrkPt
@@ -18,9 +19,21 @@ int checkTrkPts(GpsTrk *pTrk, const CmdArgs *pArgs)
         // Discard any duplicate points...
         discTrkPt = false;
 
+        // Without distance data, there isn't much we can do!
+        if (p2->distance == nilDist) {
+            fprintf(stderr, "ERROR: TrkPt #%d (%s) is missing its distance data !\n", p2->index, fmtTrkPtIdx(p2));
+            return -1;
+        }
+
         // Without elevation data, there isn't much we can do!
         if (p2->elevation == nilElev) {
             fprintf(stderr, "ERROR: TrkPt #%d (%s) is missing its elevation data !\n", p2->index, fmtTrkPtIdx(p2));
+            return -1;
+        }
+
+        // Without speed data, there isn't much we can do!
+        if (p2->speed == nilSpeed) {
+            fprintf(stderr, "ERROR: TrkPt #%d (%s) is missing its speed data !\n", p2->index, fmtTrkPtIdx(p2));
             return -1;
         }
 
@@ -51,10 +64,10 @@ int checkTrkPts(GpsTrk *pTrk, const CmdArgs *pArgs)
         }
 
         // Distance should increase monotonically
-        if ((p2->distance != 0) && (p2->distance <= p1->distance)) {
+        if ((p2->speed != 0.0) && (p2->distance <= p1->distance)) {
             if (!pArgs->quiet) {
-                fprintf(stderr, "INFO: TrkPt #%d (%s) has a non-increasing distance value: %.3lf !\n",
-                        p2->index, fmtTrkPtIdx(p2), p2->distance);
+                fprintf(stderr, "INFO: TrkPt #%d (%s) has a non-increasing distance value: distance=%.3lf speed=%.2lf !\n",
+                        p2->index, fmtTrkPtIdx(p2), p2->distance, p2->speed);
             }
 
             // Discard as a dummy
@@ -63,7 +76,7 @@ int checkTrkPts(GpsTrk *pTrk, const CmdArgs *pArgs)
         }
 
         // Discard?
-        if (discTrkPt) {
+        if (!pArgs->verbatim && discTrkPt) {
             // Remove this TrkPt from the list keeping
             // p1 the same.
             p2 = remTrkPt(pTrk, p2);
@@ -259,13 +272,12 @@ int compMetrics(GpsTrk *pTrk, const CmdArgs *pArgs)
 
     // At this point p1 points to the first trackpoint in the
     // track, which is used as the baseline...
+    p1->distance = 0.0;
     p1->grade = 0.0;
 
     // Set the activity's start time
     pTrk->startTime = p1->timestamp;
 
-    // Compute the distance, elevation diff, speed, and grade
-    // between each pair of points...
     while (p2 != NULL) {
         double absRise; // always positive!
 
@@ -275,102 +287,8 @@ int compMetrics(GpsTrk *pTrk, const CmdArgs *pArgs)
         // The "rise" is always positive!
         absRise = fabs(p2->rise);
 
-        if (p2->distance != 0.0) {
-            // The TrkPt includes the "distance from start" value,
-            // so the incremental distance "dist" between TrkPt's
-            // can be computed by simple subtraction.
-            if ((p2->dist = p2->distance - p1->distance) == 0.0) {
-                // Stopped?
-                if (!pArgs->verbatim) {
-                    if (!pArgs->quiet) {
-                        fprintf(stderr, "WARNING: TrkPt #%d (%s) has a zero dist value !\n",
-                                p2->index, fmtTrkPtIdx(p2));
-                        printTrkPt(p2);
-                    }
-
-                    // Skip and delete this TrkPt
-                    p2 = remTrkPt(pTrk, p2);
-                    pTrk->numDiscTrkPts++;
-                } else {
-                    // Carry over the data from the previous point
-                    p2->bearing = p1->bearing;
-                    p2->distance = p1->distance;
-                    p2->grade = p1->grade;
-                    p2->speed = p1->speed;
-
-                    // Move on to the next point
-                    p2 = nxtTrkPt(&p1, p2);
-                }
-                continue;
-            }
-
-            if (p2->dist > absRise) {
-                // Compute the horizontal distance "run" using
-                // Pythagoras's Theorem.
-                p2->run = sqrt((p2->dist * p2->dist) - (absRise * absRise));
-            } else {
-                // Bogus data?
-                if (!pArgs->quiet) {
-                    fprintf(stderr, "WARNING: TrkPt #%d (%s) has inconsistent dist=%.3lf and rise=%.3lf values !\n",
-                            p2->index, fmtTrkPtIdx(p2), p2->dist, absRise);
-                    printTrkPt(p2);
-                }
-                p2->run = p2->dist; // assume a null grade
-            }
-        } else {
-            // The TrkPt doesn't include the "distance from start" value,
-            // so we need to compute it ourselves...
-
-            // Compute the horizontal distance "run" between
-            // the two points, based on their latitude and
-            // longitude values.
-            if ((p2->run = compHaversine(p1, p2)) == 0.0) {
-                // Stopped?
-                if (!pArgs->verbatim) {
-                    if (!pArgs->quiet) {
-                        fprintf(stderr, "WARNING: TrkPt #%d (%s) has a null run value !\n",
-                                p2->index, fmtTrkPtIdx(p2));
-                        printTrkPt(p2);
-                    }
-
-                    // Skip and delete this TrkPt
-                    p2 = remTrkPt(pTrk, p2);
-                    pTrk->numDiscTrkPts++;
-                } else {
-                    // Carry over the data from the previous point
-                    p2->bearing = p1->bearing;
-                    p2->distance = p1->distance;
-                    p2->grade = p1->grade;
-                    p2->speed = p1->speed;
-
-                    // Move on to the next point
-                    p2 = nxtTrkPt(&p1, p2);
-                }
-                continue;
-            }
-
-            // Compute the incremental distance "dist" between
-            // the two points.
-            if (absRise == 0.0) {
-                // When riding on the flats, dist equals run!
-                p2->dist = p2->run;
-            } else {
-                // Use Pythagoras's Theorem to compute the
-                // distance (hypotenuse)
-                p2->dist = sqrt((p2->run * p2->run) + (absRise * absRise));
-            }
-
-            // Compute the "distance from start" value
-            p2->distance = p1->distance + p2->dist;
-        }
-
-        // Paranoia?
-        if (p2->distance < p1->distance) {
-            fprintf(stderr, "SPONG! TrkPt #%u (%s) has a non-increasing distance !\n",
-                    p2->index, fmtTrkPtIdx(p2));
-            fprintf(stderr, "dist=%.10lf run=%.10lf absRise=%.10lf\n", p2->dist, p2->run, absRise);
-            dumpTrkPts(pTrk, p2, 2, 0);
-        }
+        // Compute the incremental distance between points
+        p2->dist = p2->distance - p1->distance;
 
         // Compute the time interval between the two points.
         // Typically fixed at 1-sec, but some GPS devices (e.g.
@@ -380,58 +298,62 @@ int compMetrics(GpsTrk *pTrk, const CmdArgs *pArgs)
         // points each second.
         p2->deltaT = (p2->timestamp - p1->timestamp);
 
-        // Paranoia?
-        if (p2->deltaT <= 0.0) {
-            fprintf(stderr, "SPONG! TrkPt #%u (%s) has a non-increasing timestamp ! dist=%.10lf deltaT=%.3lf\n",
-                    p2->index, fmtTrkPtIdx(p2), p2->dist, p2->deltaT);
-            dumpTrkPts(pTrk, p2, 2, 0);
-        }
-
-        if ((p2->speed == nilSpeed) || (p2->speed == 0.0)) {
-            // Compute the speed (in m/s) as "distance over time"
-            p2->speed = p2->dist / p2->deltaT;
-            if (p2->speed > 27.78) {
-                // 100 kph ???
-                fprintf(stderr, "SPONG! TrkPt #%u (%s) has a bogus speed value ! dist=%.10lf deltaT=%.3lf speed=%.3lf\n",
-                         p2->index, fmtTrkPtIdx(p2), p2->dist, p2->deltaT, p2->speed);
-            }
-        }
-
         // Update the total time for the activity
         pTrk->time += p2->deltaT;
 
-        // Compute the grade as "rise over run". Notice
-        // that the grade value may get updated later.
-        // Guard against points with run=0, which can
-        // happen when using the "--verbose" option...
-        if (p2->run != 0.0) {
-            p2->grade = (p2->rise * 100.0) / p2->run;   // in [%]
+        if (p2->dist != 0.0) {
+            // We are moving!
+            if (p2->dist > absRise) {
+                // Compute the horizontal distance "run" using
+                // Pythagoras's Theorem.
+                p2->run = sqrt((p2->dist * p2->dist) - (absRise * absRise));
+            } else {
+                // Compute the horizontal distance "run" using
+                // the Haversine formula.
+                p2->run = compHaversine(p1, p2);
+            }
+
+            // Compute the grade as "rise over run". Notice
+            // that the grade value may get updated later.
+            // Guard against points with run=0, which can
+            // happen when using the "--verbose" option...
+            if (p2->run != 0.0) {
+                p2->grade = (p2->rise * 100.0) / p2->run;   // in [%]
+            } else {
+                if (!pArgs->quiet) {
+                    fprintf(stderr, "WARNING: TrkPt #%d (%s) has a null run value !\n",
+                            p2->index, fmtTrkPtIdx(p2));
+                    printTrkPt(p2);
+                }
+                p2->grade = p1->grade;  // carry over the previous grade value
+            }
+
+            // Sanity check the grade value
+            if ((p2->grade < -99.9) || (p2->grade > 99.9)) {
+                if (!pArgs->quiet) {
+                    fprintf(stderr, "WARNING: TrkPt #%d (%s) has a bogus grade value !\n",
+                            p2->index, fmtTrkPtIdx(p2));
+                    printTrkPt(p2);
+                }
+                if (p1->grade != nilGrade) {
+                    p2->grade = p1->grade;  // carry over the previous grade value
+                } else {
+                    p2->grade = 0.0;    // anything better to do here?
+                }
+            }
+
+            // Compute the bearing
+            p2->bearing = compBearing(p1, p2);
+
+            // Compute the absolute grade change
+            p2->deltaG = fabs(p2->grade - p1->grade);
+
+            // Update the total distance for the activity
+            pTrk->distance = p2->distance;
         } else {
-            if (!pArgs->quiet) {
-                fprintf(stderr, "WARNING: TrkPt #%d (%s) has a null run value !\n",
-                        p2->index, fmtTrkPtIdx(p2));
-            }
-            p2->grade = p1->grade;  // carry over the previous grade value
+            // We are stopped
+            p2->grade = 0.0;
         }
-
-        // Sanity check the grade value
-        if ((p2->grade < -99.9) || (p2->grade > 99.9)) {
-            if (!pArgs->quiet) {
-                fprintf(stderr, "WARNING: TrkPt #%d (%s) has a bogus grade value !\n",
-                        p2->index, fmtTrkPtIdx(p2));
-                printTrkPt(p2);
-            }
-            p2->grade = (p1->grade != nilGrade) ? p1->grade : 0.0;
-        }
-
-        // Compute the bearing
-        p2->bearing = compBearing(p1, p2);
-
-        // Compute the absolute grade change
-        p2->deltaG = fabs(p2->grade - p1->grade);
-
-        // Update the total distance for the activity
-        pTrk->distance = p2->distance;
 
         // Update the activity's end time
         pTrk->endTime = p2->timestamp;
@@ -445,7 +367,7 @@ int compMetrics(GpsTrk *pTrk, const CmdArgs *pArgs)
     return 0;
 }
 
-static double smaGetVal(const TrkPt *p, SmaMetric smaMetric)
+static double smaGetVal(const TrkPt *p, ActMetric smaMetric)
 {
     if (smaMetric == elevation) {
         return (double) p->elevation;
@@ -456,7 +378,7 @@ static double smaGetVal(const TrkPt *p, SmaMetric smaMetric)
     }
 }
 
-static void smaSetVal(TrkPt *p, SmaMetric smaMetric, double value)
+static void smaSetVal(TrkPt *p, ActMetric smaMetric, double value)
 {
     if (smaMetric == elevation) {
         p->elevation = value;
@@ -467,6 +389,86 @@ static void smaSetVal(TrkPt *p, SmaMetric smaMetric, double value)
     }
 }
 
+// Compute the Centered Moving Average of the specified metric
+int compCMA(GpsTrk *pTrk, const CmdArgs *pArgs)
+{
+    int n = (pArgs->smaWindow - 1) / 2;    // number of points to the L/R of the given point
+    TrkPt *p;
+
+    TAILQ_FOREACH(p, &pTrk->trkPtList, tqEntry) {
+        if (p->index >= (n+1)) {
+            int i;
+            TrkPt *tp;
+
+            p->xmaVal = 0.0;
+
+            // Points before the given point
+            for (i = 0, tp = TAILQ_PREV(p, TrkPtList, tqEntry); (i < n) && (tp != NULL); i++, tp = TAILQ_PREV(tp, TrkPtList, tqEntry)) {
+                p->xmaVal += smaGetVal(tp, pArgs->actMetric);
+            }
+
+            // The given point
+            p->xmaVal += smaGetVal(p, pArgs->actMetric);
+
+            // Points after the given point
+            for (i = 0, tp = TAILQ_NEXT(p, tqEntry); (i < n) && (tp != NULL); i++, tp = TAILQ_NEXT(tp, tqEntry)) {
+                p->xmaVal += smaGetVal(tp, pArgs->actMetric);
+            }
+
+            p->xmaVal = p->xmaVal / pArgs->smaWindow;
+        }
+    }
+
+    TAILQ_FOREACH(p, &pTrk->trkPtList, tqEntry) {
+        if (p->index >= pArgs->smaWindow) {
+            smaSetVal(p, pArgs->actMetric, p->xmaVal);
+        }
+    }
+
+    return 0;
+}
+
+// Compute the Savitzky—Golay of the specified metric
+int compSGF(GpsTrk *pTrk, const CmdArgs *pArgs)
+{
+    int nl = (pArgs->smaWindow - 1) / 2;    // number of points to the L/R of the given point
+    int nr = nl;
+    int ld = DEFAULT_LD;
+    int m = DEFAULT_M;
+    long mm = pTrk->numTrkPts;
+    double *yr, *yf;
+    int i, s;
+    TrkPt *p;
+
+    yr = dvector(1, mm);
+#if CONVOLVE_WITH_NR_CONVLV
+    yf= dvector(1,2*mm);
+#else
+    yf = dvector(1, mm);
+#endif
+
+    i = 1;
+    TAILQ_FOREACH(p, &pTrk->trkPtList, tqEntry) {
+        yr[i++] = smaGetVal(p, pArgs->actMetric);
+    }
+
+    s = sgfilter(yr, yf, mm, nl, nr, ld, m);
+
+    i = 1;
+    TAILQ_FOREACH(p, &pTrk->trkPtList, tqEntry) {
+        smaSetVal(p, pArgs->actMetric, yf[i++]);
+    }
+
+    free_dvector(yr, 1, mm);
+#if CONVOLVE_WITH_NR_CONVLV
+    free_dvector(yf,1,2*mm);
+#else
+    free_dvector(yf, 1, mm);
+#endif
+
+    return s;
+}
+
 // Compute the Simple Moving Average of the specified metric
 int compSMA(GpsTrk *pTrk, const CmdArgs *pArgs)
 {
@@ -475,12 +477,21 @@ int compSMA(GpsTrk *pTrk, const CmdArgs *pArgs)
     TAILQ_FOREACH(p, &pTrk->trkPtList, tqEntry) {
         if (p->index >= pArgs->smaWindow) {
             TrkPt *tp = p;
-            double sum = 0.0;
+
+            p->xmaVal = 0.0;
+
             for (int n = 0; n < pArgs->smaWindow; n++) {
-                sum += smaGetVal(tp, pArgs->smaMetric);
+                p->xmaVal += smaGetVal(tp, pArgs->actMetric);
                 tp = TAILQ_PREV(tp, TrkPtList, tqEntry);
             }
-            smaSetVal(p, pArgs->smaMetric, (sum / pArgs->smaWindow));
+
+            p->xmaVal = p->xmaVal / pArgs->smaWindow;
+        }
+    }
+
+    TAILQ_FOREACH(p, &pTrk->trkPtList, tqEntry) {
+        if (p->index >= pArgs->smaWindow) {
+            smaSetVal(p, pArgs->actMetric, p->xmaVal);
         }
     }
 

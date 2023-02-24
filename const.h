@@ -1,5 +1,6 @@
 #pragma once
 
+extern const double nilDist;            // nil/undefined distance value
 extern const double nilElev;            // nil/undefined elevation value
 extern const double nilGrade;           // nil/undefined grade/slope value
 extern const double nilSpeed;           // nil/undefined speed value

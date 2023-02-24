@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,6 +20,7 @@ typedef enum CmdStat {
 
 static const char *cliHelp = \
     "Supported CLI commands:\n\n"
+    "cma <metric> <window>  Smooth the specified metric using a CMA filter.\n"
     "exit                   Exit the tool\n"
     "help                   Print this help\n"
     "history                Print the command history.\n"
@@ -26,16 +28,18 @@ static const char *cliHelp = \
     "min <metric> <value>   Limit the minimum value of the specified metric.\n"
     "save <file> [<format>] Save the data in the specified format and file.\n"
     "                       The output format can be: csv, gpx, shiz, tcx.\n"
+    "sgf <metric> <window>  Smooth the specified metric using the Savitzky—Golay\n"
     "show [<a> <b>]         Show trackpoints in plain text form.\n"
-    "sma <metric> <window>  Compute the SMA of the specified metric with the\n"
-    "                       specified window size.\n"
+    "                       filter.\n"
+    "sma <metric> <window>  Smooth the specified metric using an SMA filter.\n"
     "summary [detail]       Print a summary of the data.\n"
     "trim <a> <b>           Remove the trackpoints between points <a> and <b>\n"
-    "                       (inclusive) and close the distance and time gaps \n"
-    "                       between them.\n"
+    "                       (inclusive) and close the distance and time gaps\n"
+    "                       between them. The trackpoints can be specified by\n"
+    "                       their indices or by their timestamps.\n"
     "undo                   Revert the last operation.\n"
     "\n"
-    "The metric can be: elevation, grade, speed.\n\n";
+    "The metric can be: elevation, grade, speed, gradeChange.\n\n";
 
 typedef struct CliCmd {
     const char *name;
@@ -54,6 +58,67 @@ static CmdStat errMsg(const char *msg)
 {
     printf("%s\n", msg);
     return ERROR;
+}
+
+static ActMetric getActMetric(const char *metric)
+{
+    ActMetric actMetric = invalid;
+
+    if (strcmp(metric, "elevation") == 0) {
+        actMetric = elevation;
+    } else if (strcmp(metric, "grade") == 0) {
+        actMetric = grade;
+    } else if (strcmp(metric, "speed") == 0) {
+        actMetric = speed;
+    } else if (strcmp(metric, "gradeChange") == 0) {
+        actMetric = gradeChange;
+    }
+
+    return actMetric;
+}
+
+static CmdStat cliCmdCma(GpsTrk *pTrk, CmdArgs *pArgs)
+{
+    char *smaMetric = pArgs->argv[1];
+    char *smaWindow = pArgs->argv[2];
+
+    if (pArgs->argc != 3) {
+        printf("Syntax: Cma <metric> <window>\n");
+        return ERROR;
+    }
+
+    if (strcmp(smaMetric, "elevation") == 0) {
+        pArgs->actMetric = elevation;
+    } else if (strcmp(smaMetric, "grade") == 0) {
+        pArgs->actMetric = grade;
+    } else if (strcmp(smaMetric, "speed") == 0) {
+        pArgs->actMetric = speed;
+    } else {
+        return invArgMsg(smaMetric, NULL);
+    }
+
+    if ((sscanf(smaWindow, "%d", &pArgs->smaWindow) != 1) ||
+        ((pArgs->smaWindow % 2) == 0)) {
+        return invArgMsg(smaWindow, NULL);
+    }
+
+    // Save current TrkPt's so that this operation
+    // can be 'undo'
+    saveTrkPts(pTrk);
+
+    // Compute the CMA of the specified metric over
+    // the specified window.
+    compCMA(pTrk, pArgs);
+
+    if (pArgs->actMetric == elevation) {
+        // Recompute the metrics
+        compMetrics(pTrk, pArgs);
+    } else {
+        // Recompute min/avg/max values
+        computeMinMaxValues(pTrk);
+    }
+
+    return OK;
 }
 
 static CmdStat cliCmdExit(GpsTrk *pTrk, CmdArgs *pArgs)
@@ -78,13 +143,7 @@ static CmdStat cliCmdMax(GpsTrk *pTrk, CmdArgs *pArgs)
         return ERROR;
     }
 
-    if (strcmp(metric, "elevation") == 0) {
-        pArgs->smaMetric = elevation;
-    } else if (strcmp(metric, "grade") == 0) {
-        pArgs->smaMetric = grade;
-    } else if (strcmp(metric, "speed") == 0) {
-        pArgs->smaMetric = speed;
-    } else {
+    if ((pArgs->actMetric = getActMetric(metric)) == invalid) {
         return invArgMsg(metric, NULL);
     }
 
@@ -100,12 +159,18 @@ static CmdStat cliCmdMax(GpsTrk *pTrk, CmdArgs *pArgs)
         TrkPt *p;
 
         TAILQ_FOREACH(p, &pTrk->trkPtList, tqEntry) {
-            if ((pArgs->smaMetric == elevation) && (p->elevation > maxVal)) {
+            if ((pArgs->actMetric == elevation) && (p->elevation > maxVal)) {
                 p->elevation = maxVal;
-            } else if ((pArgs->smaMetric == grade) && (p->grade > maxVal)) {
+            } else if ((pArgs->actMetric == grade) && (p->grade > maxVal)) {
                 p->grade = maxVal;
-            } else if ((pArgs->smaMetric == speed) && (p->speed > maxVal)) {
+            } else if ((pArgs->actMetric == speed) && (p->speed > maxVal)) {
                 p->speed = maxVal;
+            } else if ((pArgs->actMetric == gradeChange) && (p->deltaG > maxVal)) {
+                TrkPt *p0 = TAILQ_PREV(p, TrkPtList, tqEntry);
+                if (p0 != NULL) {
+                    printf("TrkPt #%d: grade=%.3lf gradeChange=%.3lf exceeds the maxVal=%.3lf\n",
+                            p->index, p->grade, p->deltaG, maxVal);
+                }
             }
         }
     }
@@ -127,13 +192,7 @@ static CmdStat cliCmdMin(GpsTrk *pTrk, CmdArgs *pArgs)
         return ERROR;
     }
 
-    if (strcmp(metric, "elevation") == 0) {
-        pArgs->smaMetric = elevation;
-    } else if (strcmp(metric, "grade") == 0) {
-        pArgs->smaMetric = grade;
-    } else if (strcmp(metric, "speed") == 0) {
-        pArgs->smaMetric = speed;
-    } else {
+    if ((pArgs->actMetric = getActMetric(metric)) == invalid) {
         return invArgMsg(metric, NULL);
     }
 
@@ -149,11 +208,11 @@ static CmdStat cliCmdMin(GpsTrk *pTrk, CmdArgs *pArgs)
         TrkPt *p;
 
         TAILQ_FOREACH(p, &pTrk->trkPtList, tqEntry) {
-            if ((pArgs->smaMetric == elevation) && (p->elevation < minVal)) {
+            if ((pArgs->actMetric == elevation) && (p->elevation < minVal)) {
                 p->elevation = minVal;
-            } else if ((pArgs->smaMetric == grade) && (p->grade < minVal)) {
+            } else if ((pArgs->actMetric == grade) && (p->grade < minVal)) {
                 p->grade = minVal;
-            } else if ((pArgs->smaMetric == speed) && (p->speed < minVal)) {
+            } else if ((pArgs->actMetric == speed) && (p->speed < minVal)) {
                 p->speed = minVal;
             }
         }
@@ -208,6 +267,50 @@ static CmdStat cliCmdSave(GpsTrk *pTrk, CmdArgs *pArgs)
     return OK;
 }
 
+static CmdStat cliCmdSgf(GpsTrk *pTrk, CmdArgs *pArgs)
+{
+    char *smaMetric = pArgs->argv[1];
+    char *smaWindow = pArgs->argv[2];
+
+    if (pArgs->argc != 3) {
+        printf("Syntax: sgf <metric> <window>\n");
+        return ERROR;
+    }
+
+    if (strcmp(smaMetric, "elevation") == 0) {
+        pArgs->actMetric = elevation;
+    } else if (strcmp(smaMetric, "grade") == 0) {
+        pArgs->actMetric = grade;
+    } else if (strcmp(smaMetric, "speed") == 0) {
+        pArgs->actMetric = speed;
+    } else {
+        return invArgMsg(smaMetric, NULL);
+    }
+
+    if ((sscanf(smaWindow, "%d", &pArgs->smaWindow) != 1) ||
+        ((pArgs->smaWindow % 2) == 0)) {
+        return invArgMsg(smaWindow, NULL);
+    }
+
+    // Save current TrkPt's so that this operation
+    // can be 'undo'
+    saveTrkPts(pTrk);
+
+    // Compute the SGF of the specified metric over
+    // the specified window.
+    compSGF(pTrk, pArgs);
+
+    if (pArgs->actMetric == elevation) {
+        // Recompute the metrics
+        compMetrics(pTrk, pArgs);
+    } else {
+        // Recompute min/avg/max values
+        computeMinMaxValues(pTrk);
+    }
+
+    return OK;
+}
+
 static CmdStat cliCmdShow(GpsTrk *pTrk, CmdArgs *pArgs)
 {
     int a = -1;
@@ -249,11 +352,11 @@ static CmdStat cliCmdSma(GpsTrk *pTrk, CmdArgs *pArgs)
     }
 
     if (strcmp(smaMetric, "elevation") == 0) {
-        pArgs->smaMetric = elevation;
+        pArgs->actMetric = elevation;
     } else if (strcmp(smaMetric, "grade") == 0) {
-        pArgs->smaMetric = grade;
+        pArgs->actMetric = grade;
     } else if (strcmp(smaMetric, "speed") == 0) {
-        pArgs->smaMetric = speed;
+        pArgs->actMetric = speed;
     } else {
         return invArgMsg(smaMetric, NULL);
     }
@@ -271,7 +374,7 @@ static CmdStat cliCmdSma(GpsTrk *pTrk, CmdArgs *pArgs)
     // the specified window.
     compSMA(pTrk, pArgs);
 
-    if (pArgs->smaMetric == elevation) {
+    if (pArgs->actMetric == elevation) {
         // Recompute the metrics
         compMetrics(pTrk, pArgs);
     } else {
@@ -294,19 +397,50 @@ static CmdStat cliCmdSummary(GpsTrk *pTrk, CmdArgs *pArgs)
     return OK;
 }
 
+static int findTrkPtByTime(GpsTrk *pTrk, time_t time)
+{
+    TrkPt *p;
+
+    TAILQ_FOREACH(p, &pTrk->trkPtList, tqEntry) {
+        time_t ts = (time_t) (p->timestamp - pTrk->startTime);
+        if (ts == time)
+            return p->index;
+    }
+
+    return -1;
+}
+
+static int getTrkPt(GpsTrk *pTrk, const char *arg)
+{
+    int hr, min, sec;
+    int index = -1;
+
+    if (sscanf(arg, "%d:%d:%d", &hr, &min, &sec) == 3) {
+        if ((hr >= 0) &&
+            (min >= 0) && (min <= 59) &&
+            (sec >= 0) && (sec <= 59)) {
+            index = findTrkPtByTime(pTrk, (hr * 3600 + min * 60 + sec));
+        }
+    } else {
+        sscanf(arg, "%d", &index);
+    }
+
+    return index;
+}
+
 static CmdStat cliCmdTrim(GpsTrk *pTrk, CmdArgs *pArgs)
 {
     int from, to;
 
     if ((pArgs->argc != 3) ||
-        (sscanf(pArgs->argv[1], "%d", &from) != 1) ||
-        (sscanf(pArgs->argv[2], "%d", &to) != 1)) {
+        ((from = getTrkPt(pTrk, pArgs->argv[1])) < 0) ||
+        ((to = getTrkPt(pTrk, pArgs->argv[2])) < 0)) {
         printf("Syntax: trim <from> <to>\n");
         return ERROR;
     }
 
     if (from > to) {
-        printf("The <from> value must be lower than the <to> value\n");
+        printf("The <from> value (%d) must be lower than the <to> value (%d)\n", from, to);
         return ERROR;
     }
 
@@ -323,9 +457,10 @@ static CmdStat cliCmdTrim(GpsTrk *pTrk, CmdArgs *pArgs)
         TrkPt *p = TAILQ_FIRST(&pTrk->trkPtList);
         Bool discTrkPt = false;
         Bool trimTrkPts = false;
+        double baselineTime = 0.0;
+        double baselineDist = 0.0;
         double trimmedTime = 0.0;
-        double trimmedDistance = 0.0;
-        TrkPt *p0 = NULL;
+        double trimmedDist = 0.0;
         int index = 0;
 
         // Remove all TrkPt's in the <from>-<to> range and
@@ -339,12 +474,13 @@ static CmdStat cliCmdTrim(GpsTrk *pTrk, CmdArgs *pArgs)
                 trimTrkPts = true;
                 pTrk->numTrimTrkPts++;
                 discTrkPt = true;
-                p0 = p; // set baseline
+                baselineTime = p->timestamp;    // set baseline timestamp
+                baselineDist = p->distance;     // set baseline distance
             } else if (p->index == to) {
                 // Stop trimming
                 trimTrkPts = false;
-                trimmedTime = p->timestamp - p0->timestamp;     // total time trimmed out
-                trimmedDistance = p->distance - p0->distance;   // total distance trimmed out
+                trimmedTime = p->timestamp - baselineTime + 1;  // total time trimmed out
+                trimmedDist = p->distance - baselineDist + 1;   // total distance trimmed out
                 pTrk->numTrimTrkPts++;
                 discTrkPt = true;
             } else if (trimTrkPts) {
@@ -360,11 +496,9 @@ static CmdStat cliCmdTrim(GpsTrk *pTrk, CmdArgs *pArgs)
             } else {
                 // If we trimmed out some previous TrkPt's, then we
                 // need to adjust the timestamp and distance values
-                // of this TrkPt so as to "close the gap".
-                if (p0 != NULL) {
-                    p->timestamp -= trimmedTime;
-                    p->distance -= trimmedDistance;
-                }
+                // of this TrkPt so as to "close the gaps".
+                p->timestamp -= trimmedTime;
+                p->distance -= trimmedDist;
                 p = nxtTrkPt(NULL, p);
             }
         }
@@ -376,10 +510,27 @@ static CmdStat cliCmdTrim(GpsTrk *pTrk, CmdArgs *pArgs)
 
         // Update the total number of TrkPt's
         pTrk->numTrkPts = index;
+
+        // If we trimmed the first set of TrkPt's, then
+        // adjust the startTime, etc.
+        if (from == 0) {
+            p = TAILQ_FIRST(&pTrk->trkPtList);
+            p->distance = 0.0;
+            p->grade = 0.0;
+            pTrk->startTime = p->timestamp;
+        }
+
+        // If we trimmed the last set of TrkPt's, then
+        // adjust the endTime, etc.
+        if (to > pTrk->numTrkPts) {
+            p = TAILQ_LAST(&pTrk->trkPtList, TrkPtList);
+            pTrk->endTime = p->timestamp;
+            pTrk->distance = p->distance;
+        }
     }
 
-    // Recompute the metrics
-    compMetrics(pTrk, pArgs);
+    // Recompute min/avg/max values
+    computeMinMaxValues(pTrk);
 
     return OK;
 }
@@ -397,11 +548,13 @@ static CmdStat cliCmdUndo(GpsTrk *pTrk, CmdArgs *pArgs)
 
 // CLI command table
 static CliCmd cliCmdTbl [] = {
+        { "cma",        cliCmdCma },
         { "exit",       cliCmdExit },
         { "help",       cliCmdHelp },
         { "max",        cliCmdMax },
         { "min",        cliCmdMin },
         { "save",       cliCmdSave },
+        { "sgf",        cliCmdSgf },
         { "show",       cliCmdShow },
         { "sma",        cliCmdSma },
         { "summary",    cliCmdSummary },

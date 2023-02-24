@@ -44,12 +44,14 @@ typedef enum Units {
     imperial = 2,   // feet, mph, farenheit
 } Units;
 
-// Metric used for the SMA
-typedef enum SmaMetric {
+// Activity Metrics
+typedef enum ActMetric {
+    invalid = 0,
     elevation = 1,      // elevation
     grade = 2,          // grade
     speed = 3,          // speed
-} SmaMetric;
+    gradeChange = 4,    // grade change
+} ActMetric;
 
 #define MAX_ARGS    8
 
@@ -68,7 +70,7 @@ typedef struct CmdArgs {
     int argc;               // number of arguments
     char *argv[MAX_ARGS];   // list of arguments
     Bool detail;            // show detailed information
-    SmaMetric smaMetric;    // metric to use for the SMA
+    ActMetric actMetric;    // activity metric to use
     int smaWindow;          // SMA window size
 } CmdArgs;
 
@@ -117,6 +119,8 @@ typedef struct TrkPt {
 
     double bearing;     // initial bearing / forward azimuth (in decimal degrees)
     double grade;       // actual grade (in %)
+
+    double xmaVal;      // adjusted SMA/CMA metric
 } TrkPt;
 
 // GPS Track (sequence of Track Points)

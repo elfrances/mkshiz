@@ -226,6 +226,9 @@ int parseFitFile(CmdArgs *pArgs, GpsTrk *pTrk, const char *inFile)
                                 pTrk->inMask |= SD_POWER;
                             }
 
+                            //printf("FIT: trkPt=#%d distance=%u enhanced_altitude=%u enhanced_speed=%u grade=%d\n", pTrkPt->index, record->distance, record->enhanced_altitude, record->enhanced_speed, record->grade);
+                            //printf("FIT: trkPt=#%d distance=%u altitude=%u speed=%u grade=%d\n", pTrkPt->index, record->distance, record->altitude, record->speed, record->grade);
+
                             // Insert track point at the tail of the queue
                             TAILQ_INSERT_TAIL(&pTrk->trkPtList, pTrkPt, tqEntry);
 
