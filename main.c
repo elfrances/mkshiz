@@ -35,7 +35,14 @@ static const char *help =
         "    --quiet\n"
         "        Suppress all warning messages.\n"
         "    --version\n"
-        "        Show version information and exit.\n";
+        "        Show version information and exit.\n"
+        "NOTES:\n"
+        "    Running the tool under Windows/Cygwin the drive letters are replaced by\n"
+        "    their equivalent cygdrive: e.g. the path \"C:\\Users\\Marcelo\\Documents\"\n"
+        "    becomes \"/cygdrive/c/Users/Marcelo/Documents\".\n"
+        "\n"
+        "BUGS:\n"
+        "    Report bugs and enhancement requests to: marcelo_mourier@yahoo.com\n";
 
 static void invalidArgument(const char *arg, const char *val)
 {

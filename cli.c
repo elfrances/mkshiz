@@ -28,7 +28,7 @@ static const char *cliHelp = \
     "min <metric> <value>   Limit the minimum value of the specified metric.\n"
     "save <file> [<format>] Save the data in the specified format and file.\n"
     "                       The output format can be: csv, gpx, shiz, tcx.\n"
-    "sgf <metric> <window>  Smooth the specified metric using the Savitzky—Golay\n"
+    "sgf <metric> <window>  Smooth the specified metric using the Savitzky-Golay\n"
     "                       filter.\n"
     "show [<a> <b>]         Show trackpoints in plain text form.\n"
     "sma <metric> <window>  Smooth the specified metric using an SMA filter.\n"
@@ -39,7 +39,8 @@ static const char *cliHelp = \
     "                       their indices or by their timestamps.\n"
     "undo                   Revert the last operation.\n"
     "\n"
-    "The metric can be: elevation, grade, speed, gradeChange.\n\n";
+    "The metric can be: elevation, grade, speed.\n"
+    "\n";
 
 typedef struct CliCmd {
     const char *name;
