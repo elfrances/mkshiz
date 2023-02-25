@@ -29,8 +29,8 @@ static const char *cliHelp = \
     "save <file> [<format>] Save the data in the specified format and file.\n"
     "                       The output format can be: csv, gpx, shiz, tcx.\n"
     "sgf <metric> <window>  Smooth the specified metric using the Savitzky—Golay\n"
-    "show [<a> <b>]         Show trackpoints in plain text form.\n"
     "                       filter.\n"
+    "show [<a> <b>]         Show trackpoints in plain text form.\n"
     "sma <metric> <window>  Smooth the specified metric using an SMA filter.\n"
     "summary [detail]       Print a summary of the data.\n"
     "trim <a> <b>           Remove the trackpoints between points <a> and <b>\n"
@@ -113,10 +113,10 @@ static CmdStat cliCmdCma(GpsTrk *pTrk, CmdArgs *pArgs)
     if (pArgs->actMetric == elevation) {
         // Recompute the metrics
         compMetrics(pTrk, pArgs);
-    } else {
-        // Recompute min/avg/max values
-        computeMinMaxValues(pTrk);
     }
+
+    // Recompute min/avg/max values
+    computeMinMaxValues(pTrk);
 
     return OK;
 }
@@ -129,6 +129,22 @@ static CmdStat cliCmdExit(GpsTrk *pTrk, CmdArgs *pArgs)
 static CmdStat cliCmdHelp(GpsTrk *pTrk, CmdArgs *pArgs)
 {
     printf("%s", cliHelp);
+    return OK;
+}
+
+static CmdStat cliCmdHistory(GpsTrk *pTrk, CmdArgs *pArgs)
+{
+    HIST_ENTRY **histList = history_list();
+
+    if (histList != NULL) {
+        for (int n = 0; histList[n] != NULL; n++) {
+            HIST_ENTRY *histEntry = histList[n];
+            if (histEntry != NULL) {
+                printf("%s\n", histEntry->line);
+            }
+        }
+    }
+
     return OK;
 }
 
@@ -165,11 +181,14 @@ static CmdStat cliCmdMax(GpsTrk *pTrk, CmdArgs *pArgs)
                 p->grade = maxVal;
             } else if ((pArgs->actMetric == speed) && (p->speed > maxVal)) {
                 p->speed = maxVal;
-            } else if ((pArgs->actMetric == gradeChange) && (p->deltaG > maxVal)) {
+            } else if (pArgs->actMetric == gradeChange) {
                 TrkPt *p0 = TAILQ_PREV(p, TrkPtList, tqEntry);
                 if (p0 != NULL) {
-                    printf("TrkPt #%d: grade=%.3lf gradeChange=%.3lf exceeds the maxVal=%.3lf\n",
-                            p->index, p->grade, p->deltaG, maxVal);
+                    if ((p->deltaG = fabs(p->grade - p0->grade)) > maxVal) {
+                        printf("TrkPt #%d: grade=%.3lf->%.3lf change=%.3lf exceeds the maxVal=%.3lf\n",
+                                p->index, p0->grade, p->grade, p->deltaG, maxVal);
+                        // TBD
+                    }
                 }
             }
         }
@@ -303,10 +322,10 @@ static CmdStat cliCmdSgf(GpsTrk *pTrk, CmdArgs *pArgs)
     if (pArgs->actMetric == elevation) {
         // Recompute the metrics
         compMetrics(pTrk, pArgs);
-    } else {
-        // Recompute min/avg/max values
-        computeMinMaxValues(pTrk);
     }
+
+    // Recompute min/avg/max values
+    computeMinMaxValues(pTrk);
 
     return OK;
 }
@@ -377,10 +396,10 @@ static CmdStat cliCmdSma(GpsTrk *pTrk, CmdArgs *pArgs)
     if (pArgs->actMetric == elevation) {
         // Recompute the metrics
         compMetrics(pTrk, pArgs);
-    } else {
-        // Recompute min/avg/max values
-        computeMinMaxValues(pTrk);
     }
+
+    // Recompute min/avg/max values
+    computeMinMaxValues(pTrk);
 
     return OK;
 }
@@ -496,9 +515,12 @@ static CmdStat cliCmdTrim(GpsTrk *pTrk, CmdArgs *pArgs)
             } else {
                 // If we trimmed out some previous TrkPt's, then we
                 // need to adjust the timestamp and distance values
-                // of this TrkPt so as to "close the gaps".
-                p->timestamp -= trimmedTime;
-                p->distance -= trimmedDist;
+                // of this TrkPt so as to "close the gaps".  Protect
+                // against silly negative values!
+                if ((p->timestamp -= trimmedTime) < 0.0)
+                    p->timestamp = 0.0;
+                if ((p->distance -= trimmedDist) < 0.0)
+                    p->distance = 0.0;
                 p = nxtTrkPt(NULL, p);
             }
         }
@@ -551,6 +573,7 @@ static CliCmd cliCmdTbl [] = {
         { "cma",        cliCmdCma },
         { "exit",       cliCmdExit },
         { "help",       cliCmdHelp },
+        { "history",    cliCmdHistory },
         { "max",        cliCmdMax },
         { "min",        cliCmdMin },
         { "save",       cliCmdSave },

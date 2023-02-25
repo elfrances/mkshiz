@@ -108,8 +108,6 @@ typedef struct TrkPt {
     double distance;    // distance from start (in meters)
 
     // Computed metrics
-    Bool adjGrade;      // grade was adjusted
-    double adjTime;     // adjusted timestamp
     double deltaG;      // grade diff with previous point (in %)
     double deltaS;      // speed diff with previous point (in m/s)
     double deltaT;      // time diff with previous point (in seconds)
@@ -120,7 +118,7 @@ typedef struct TrkPt {
     double bearing;     // initial bearing / forward azimuth (in decimal degrees)
     double grade;       // actual grade (in %)
 
-    double xmaVal;      // adjusted SMA/CMA metric
+    double adjVal;      // adjusted metric
 } TrkPt;
 
 // GPS Track (sequence of Track Points)
@@ -162,9 +160,6 @@ typedef struct GpsTrk {
     // Base distance/time
     double baseDistance;            // distance reference to generate relative distance values
     double baseTime;                // time reference to generate relative timestamp values
-
-    // Time offset
-    double timeOffset;              // to set/change the activity's start time
 
     // Aggregate values
     int heartRate;

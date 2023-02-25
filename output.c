@@ -61,8 +61,7 @@ static void printSummary(GpsTrk *pTrk, CmdArgs *pArgs)
         time_t dateAndTime;
 
         p = TAILQ_FIRST(&pTrk->trkPtList);
-        timeStamp = (p->adjTime != 0) ? p->adjTime : p->timestamp;    // use the adjusted timestamp if there is one
-        timeStamp += pTrk->timeOffset;
+        timeStamp = p->timestamp;
         dateAndTime = (time_t) timeStamp;  // sec only
         strftime(timeBuf, sizeof (timeBuf), "%Y-%m-%dT%H:%M:%S", gmtime_r(&dateAndTime, &brkDwnTime));
         fprintf(pArgs->outFile, "    dateAndTime: %s\n", timeBuf);
@@ -217,11 +216,10 @@ static void printGpxFmt(GpsTrk *pTrk, CmdArgs *pArgs)
 
     // Print all the track points
     TAILQ_FOREACH(p, &pTrk->trkPtList, tqEntry) {
-        double timeStamp = (p->adjTime != 0.0) ? p->adjTime : p->timestamp;    // use the adjusted timestamp if there is one
+        double timeStamp = p->timestamp;
         time_t time;
         int ms = 0;
 
-        timeStamp += pTrk->timeOffset;
         time = (time_t) timeStamp;  // sec only
         ms = (timeStamp - (double) time) * 1000.0;  // milliseconds
         strftime(timeBuf, sizeof (timeBuf), "%Y-%m-%dT%H:%M:%S", gmtime_r(&time, &brkDwnTime));
@@ -336,11 +334,10 @@ static void printTcxFmt(GpsTrk *pTrk, CmdArgs *pArgs)
 
     // Print all the track points
     TAILQ_FOREACH(p, &pTrk->trkPtList, tqEntry) {
-        double timeStamp = (p->adjTime != 0.0) ? p->adjTime : p->timestamp;    // use the adjusted timestamp if there is one
+        double timeStamp = p->timestamp;
         time_t time;
         int ms = 0;
 
-        timeStamp += pTrk->timeOffset;
         time = (time_t) timeStamp;  // sec only
         ms = (timeStamp - (double) time) * 1000.0;  // milliseconds
         strftime(timeBuf, sizeof (timeBuf), "%Y-%m-%dT%H:%M:%S", gmtime_r(&time, &brkDwnTime));

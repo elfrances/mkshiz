@@ -158,7 +158,7 @@ int computeMinMaxValues(GpsTrk *pTrk)
         if (p2->speed > pTrk->maxSpeed) {
              pTrk->maxSpeed = p2->speed;
              pTrk->maxSpeedTrkPt = p2;
-        } else if ((p2->speed != 0) && (p2->speed < pTrk->minSpeed)) {
+        } else if ((p2->speed != nilSpeed) && (p2->speed < pTrk->minSpeed)) {
             pTrk->minSpeed = p2->speed;
             pTrk->minSpeedTrkPt = p2;
         }
@@ -186,6 +186,7 @@ int computeMinMaxValues(GpsTrk *pTrk)
         }
 
         // Update the max absolute grade change
+        p2->deltaG = fabs(p2->grade - p1->grade);
         if (p2->deltaG > pTrk->maxDeltaG) {
             pTrk->maxDeltaG = p2->deltaG;
             pTrk->maxDeltaGTrkPt = p2;
@@ -400,28 +401,28 @@ int compCMA(GpsTrk *pTrk, const CmdArgs *pArgs)
             int i;
             TrkPt *tp;
 
-            p->xmaVal = 0.0;
+            p->adjVal = 0.0;
 
             // Points before the given point
             for (i = 0, tp = TAILQ_PREV(p, TrkPtList, tqEntry); (i < n) && (tp != NULL); i++, tp = TAILQ_PREV(tp, TrkPtList, tqEntry)) {
-                p->xmaVal += smaGetVal(tp, pArgs->actMetric);
+                p->adjVal += smaGetVal(tp, pArgs->actMetric);
             }
 
             // The given point
-            p->xmaVal += smaGetVal(p, pArgs->actMetric);
+            p->adjVal += smaGetVal(p, pArgs->actMetric);
 
             // Points after the given point
             for (i = 0, tp = TAILQ_NEXT(p, tqEntry); (i < n) && (tp != NULL); i++, tp = TAILQ_NEXT(tp, tqEntry)) {
-                p->xmaVal += smaGetVal(tp, pArgs->actMetric);
+                p->adjVal += smaGetVal(tp, pArgs->actMetric);
             }
 
-            p->xmaVal = p->xmaVal / pArgs->smaWindow;
+            p->adjVal = p->adjVal / pArgs->smaWindow;
         }
     }
 
     TAILQ_FOREACH(p, &pTrk->trkPtList, tqEntry) {
         if (p->index >= pArgs->smaWindow) {
-            smaSetVal(p, pArgs->actMetric, p->xmaVal);
+            smaSetVal(p, pArgs->actMetric, p->adjVal);
         }
     }
 
@@ -478,20 +479,20 @@ int compSMA(GpsTrk *pTrk, const CmdArgs *pArgs)
         if (p->index >= pArgs->smaWindow) {
             TrkPt *tp = p;
 
-            p->xmaVal = 0.0;
+            p->adjVal = 0.0;
 
             for (int n = 0; n < pArgs->smaWindow; n++) {
-                p->xmaVal += smaGetVal(tp, pArgs->actMetric);
+                p->adjVal += smaGetVal(tp, pArgs->actMetric);
                 tp = TAILQ_PREV(tp, TrkPtList, tqEntry);
             }
 
-            p->xmaVal = p->xmaVal / pArgs->smaWindow;
+            p->adjVal = p->adjVal / pArgs->smaWindow;
         }
     }
 
     TAILQ_FOREACH(p, &pTrk->trkPtList, tqEntry) {
         if (p->index >= pArgs->smaWindow) {
-            smaSetVal(p, pArgs->actMetric, p->xmaVal);
+            smaSetVal(p, pArgs->actMetric, p->adjVal);
         }
     }
 
