@@ -13,6 +13,7 @@
 #include "fit/fit_example.c"
 #include "fit/fit_crc.c"
 #include "fit/fit_convert.c"
+#include "fit/fit_strings.c"
 
 // FIT uses December 31, 1989 UTC as their Epoch. See below
 // for the details:
@@ -255,10 +256,17 @@ int parseFitFile(CmdArgs *pArgs, GpsTrk *pTrk, const char *inFile)
                     break;
                 }
 
+                case FIT_MESG_NUM_WORKOUT: {
+                    //const FIT_WORKOUT_MESG *workout = (FIT_WORKOUT_MESG *) mesg;
+                    //printf("Workout: sport=%u sub_sport=%u\n", workout->sport, workout->sub_sport);
+                    break;
+                }
+
                 case FIT_MESG_NUM_DEVICE_INFO: {
                     //const FIT_DEVICE_INFO_MESG *device_info = (FIT_DEVICE_INFO_MESG *) mesg;
-                    //printf("Device Info: timestamp=%u manufacturer=%u product=%u\n",
-                    //        device_info->timestamp, device_info->manufacturer, device_info->product);
+                    //printf("Device Info: timestamp=%u manufacturer=%s product=%s product_name=%s device_type=%s battery_status=%s descriptor=%s\n",
+                    //        device_info->timestamp, fitManufacturer(device_info->manufacturer), fitProduct(device_info->manufacturer, device_info->product), device_info->product_name,
+                    //        fitAntPlusDeviceType(device_info->device_type), fitBatteryStatus(device_info->battery_status), device_info->descriptor);
                     break;
                 }
 
@@ -286,6 +294,12 @@ int parseFitFile(CmdArgs *pArgs, GpsTrk *pTrk, const char *inFile)
                     break;
                 }
 
+                case FIT_MESG_NUM_TRAINING_FILE: {
+                    //const FIT_TRAINING_FILE_MESG *tf = (FIT_TRAINING_FILE_MESG *) mesg;
+                    //printf("Training File: timestamp=%u manufacturer=%s product=%s type=%s\n",
+                    //        tf->time_created, fitManufacturer(tf->manufacturer), fitProduct(tf->manufacturer, tf->product), fitFile(tf->type));
+                }
+
                 case FIT_MESG_NUM_HRV: {
                     //const FIT_HRV_MESG *hrv = (FIT_HRV_MESG *) mesg;
                     //printf("HRV: time=%.3lf\n", ((double) hrv->time[0] / 1000.0));
@@ -305,7 +319,7 @@ int parseFitFile(CmdArgs *pArgs, GpsTrk *pTrk, const char *inFile)
                 }
 
                 default:
-                    //printf("Unknown\n");
+                    //printf("Unknown: %u\n", mesgNum);
                     break;
                 }
             }

@@ -1009,7 +1009,7 @@ typedef FIT_ENUM FIT_COURSE_POINT;
 typedef FIT_UINT16 FIT_MANUFACTURER;
 #define FIT_MANUFACTURER_INVALID                                                 FIT_UINT16_INVALID
 #define FIT_MANUFACTURER_GARMIN                                                  ((FIT_MANUFACTURER)1)
-#define FIT_MANUFACTURER_GARMIN_FR405_ANTFS                                      ((FIT_MANUFACTURER)2) // Do not use.  Used by FR405 for ANTFS man id.
+#define FIT_MANUFACTURER_GARMIN_FR405_ANTFS                                      ((FIT_MANUFACTURER)2) // Do not use. Used by FR405 for ANTFS man id.
 #define FIT_MANUFACTURER_ZEPHYR                                                  ((FIT_MANUFACTURER)3)
 #define FIT_MANUFACTURER_DAYTON                                                  ((FIT_MANUFACTURER)4)
 #define FIT_MANUFACTURER_IDT                                                     ((FIT_MANUFACTURER)5)
@@ -1147,6 +1147,10 @@ typedef FIT_UINT16 FIT_MANUFACTURER;
 #define FIT_MANUFACTURER_KINETIC_SPORTS                                          ((FIT_MANUFACTURER)139)
 #define FIT_MANUFACTURER_DECATHLON_BYTE                                          ((FIT_MANUFACTURER)140)
 #define FIT_MANUFACTURER_TQ_SYSTEMS                                              ((FIT_MANUFACTURER)141)
+#define FIT_MANUFACTURER_TAG_HEUER                                               ((FIT_MANUFACTURER)142)
+#define FIT_MANUFACTURER_KEISER_FITNESS                                          ((FIT_MANUFACTURER)143)
+#define FIT_MANUFACTURER_ZWIFT_BYTE                                              ((FIT_MANUFACTURER)144)
+#define FIT_MANUFACTURER_PORSCHE_EP                                              ((FIT_MANUFACTURER)145)
 #define FIT_MANUFACTURER_DEVELOPMENT                                             ((FIT_MANUFACTURER)255)
 #define FIT_MANUFACTURER_HEALTHANDLIFE                                           ((FIT_MANUFACTURER)257)
 #define FIT_MANUFACTURER_LEZYNE                                                  ((FIT_MANUFACTURER)258)
@@ -1209,8 +1213,13 @@ typedef FIT_UINT16 FIT_MANUFACTURER;
 #define FIT_MANUFACTURER_RGT_CYCLING                                             ((FIT_MANUFACTURER)315)
 #define FIT_MANUFACTURER_VASA                                                    ((FIT_MANUFACTURER)316)
 #define FIT_MANUFACTURER_RACE_REPUBLIC                                           ((FIT_MANUFACTURER)317)
+#define FIT_MANUFACTURER_FAZUA                                                   ((FIT_MANUFACTURER)318)
+#define FIT_MANUFACTURER_OREKA_TRAINING                                          ((FIT_MANUFACTURER)319)
+#define FIT_MANUFACTURER_LSEC                                                    ((FIT_MANUFACTURER)320) // Lishun Electric & Communication
+#define FIT_MANUFACTURER_LULULEMON_STUDIO                                        ((FIT_MANUFACTURER)321)
+#define FIT_MANUFACTURER_SHANYUE                                                 ((FIT_MANUFACTURER)322)
 #define FIT_MANUFACTURER_ACTIGRAPHCORP                                           ((FIT_MANUFACTURER)5759)
-#define FIT_MANUFACTURER_COUNT                                                   202
+#define FIT_MANUFACTURER_COUNT                                                   211
 
 typedef FIT_UINT16 FIT_GARMIN_PRODUCT;
 #define FIT_GARMIN_PRODUCT_INVALID                                               FIT_UINT16_INVALID
@@ -1390,6 +1399,7 @@ typedef FIT_UINT16 FIT_GARMIN_PRODUCT;
 #define FIT_GARMIN_PRODUCT_FENIX3_HR_KOR                                         ((FIT_GARMIN_PRODUCT)2477)
 #define FIT_GARMIN_PRODUCT_NAUTIX                                                ((FIT_GARMIN_PRODUCT)2496)
 #define FIT_GARMIN_PRODUCT_VIVO_ACTIVE_HR_APAC                                   ((FIT_GARMIN_PRODUCT)2497)
+#define FIT_GARMIN_PRODUCT_FR35                                                  ((FIT_GARMIN_PRODUCT)2503)
 #define FIT_GARMIN_PRODUCT_OREGON7XX_WW                                          ((FIT_GARMIN_PRODUCT)2512)
 #define FIT_GARMIN_PRODUCT_EDGE_820                                              ((FIT_GARMIN_PRODUCT)2530)
 #define FIT_GARMIN_PRODUCT_EDGE_EXPLORE_820                                      ((FIT_GARMIN_PRODUCT)2531)
@@ -1421,6 +1431,7 @@ typedef FIT_UINT16 FIT_GARMIN_PRODUCT;
 #define FIT_GARMIN_PRODUCT_FORETREX_601_701                                      ((FIT_GARMIN_PRODUCT)2769)
 #define FIT_GARMIN_PRODUCT_VIVO_MOVE_HR                                          ((FIT_GARMIN_PRODUCT)2772)
 #define FIT_GARMIN_PRODUCT_EDGE_1030                                             ((FIT_GARMIN_PRODUCT)2713)
+#define FIT_GARMIN_PRODUCT_FR35_SEA                                              ((FIT_GARMIN_PRODUCT)2727)
 #define FIT_GARMIN_PRODUCT_VECTOR_3                                              ((FIT_GARMIN_PRODUCT)2787)
 #define FIT_GARMIN_PRODUCT_FENIX5_ASIA                                           ((FIT_GARMIN_PRODUCT)2796)
 #define FIT_GARMIN_PRODUCT_FENIX5S_ASIA                                          ((FIT_GARMIN_PRODUCT)2797)
@@ -1547,6 +1558,7 @@ typedef FIT_UINT16 FIT_GARMIN_PRODUCT;
 #define FIT_GARMIN_PRODUCT_APPROACH_S12                                          ((FIT_GARMIN_PRODUCT)3823)
 #define FIT_GARMIN_PRODUCT_ENDURO_ASIA                                           ((FIT_GARMIN_PRODUCT)3872)
 #define FIT_GARMIN_PRODUCT_VENUSQ_ASIA                                           ((FIT_GARMIN_PRODUCT)3837)
+#define FIT_GARMIN_PRODUCT_EDGE_1040                                             ((FIT_GARMIN_PRODUCT)3843)
 #define FIT_GARMIN_PRODUCT_MARQ_GOLFER_ASIA                                      ((FIT_GARMIN_PRODUCT)3850)
 #define FIT_GARMIN_PRODUCT_VENU2_PLUS                                            ((FIT_GARMIN_PRODUCT)3851)
 #define FIT_GARMIN_PRODUCT_FR55                                                  ((FIT_GARMIN_PRODUCT)3869)
@@ -1565,15 +1577,31 @@ typedef FIT_UINT16 FIT_GARMIN_PRODUCT;
 #define FIT_GARMIN_PRODUCT_VENU2S_ASIA                                           ((FIT_GARMIN_PRODUCT)3949)
 #define FIT_GARMIN_PRODUCT_VENU2_ASIA                                            ((FIT_GARMIN_PRODUCT)3950)
 #define FIT_GARMIN_PRODUCT_FR945_LTE_ASIA                                        ((FIT_GARMIN_PRODUCT)3978)
+#define FIT_GARMIN_PRODUCT_VIVO_MOVE_SPORT                                       ((FIT_GARMIN_PRODUCT)3982)
+#define FIT_GARMIN_PRODUCT_VIVOMOVE_TREND                                        ((FIT_GARMIN_PRODUCT)3983)
 #define FIT_GARMIN_PRODUCT_APPROACH_S12_ASIA                                     ((FIT_GARMIN_PRODUCT)3986)
+#define FIT_GARMIN_PRODUCT_FR255_MUSIC                                           ((FIT_GARMIN_PRODUCT)3990)
+#define FIT_GARMIN_PRODUCT_FR255_SMALL_MUSIC                                     ((FIT_GARMIN_PRODUCT)3991)
+#define FIT_GARMIN_PRODUCT_FR255                                                 ((FIT_GARMIN_PRODUCT)3992)
+#define FIT_GARMIN_PRODUCT_FR255_SMALL                                           ((FIT_GARMIN_PRODUCT)3993)
 #define FIT_GARMIN_PRODUCT_APPROACH_G12_ASIA                                     ((FIT_GARMIN_PRODUCT) 4001)
 #define FIT_GARMIN_PRODUCT_APPROACH_S42_ASIA                                     ((FIT_GARMIN_PRODUCT)4002)
 #define FIT_GARMIN_PRODUCT_DESCENT_G1                                            ((FIT_GARMIN_PRODUCT)4005)
 #define FIT_GARMIN_PRODUCT_VENU2_PLUS_ASIA                                       ((FIT_GARMIN_PRODUCT)4017)
+#define FIT_GARMIN_PRODUCT_FR955                                                 ((FIT_GARMIN_PRODUCT)4024)
 #define FIT_GARMIN_PRODUCT_FR55_ASIA                                             ((FIT_GARMIN_PRODUCT)4033)
+#define FIT_GARMIN_PRODUCT_VIVOSMART_5                                           ((FIT_GARMIN_PRODUCT)4063)
 #define FIT_GARMIN_PRODUCT_INSTINCT_2_ASIA                                       ((FIT_GARMIN_PRODUCT)4071)
+#define FIT_GARMIN_PRODUCT_MARQ_GEN2                                             ((FIT_GARMIN_PRODUCT)4105) // Adventurer, Athlete, Captain, Golfer
+#define FIT_GARMIN_PRODUCT_VENUSQ2                                               ((FIT_GARMIN_PRODUCT)4115)
+#define FIT_GARMIN_PRODUCT_VENUSQ2MUSIC                                          ((FIT_GARMIN_PRODUCT)4116)
+#define FIT_GARMIN_PRODUCT_MARQ_GEN2_AVIATOR                                     ((FIT_GARMIN_PRODUCT)4124)
 #define FIT_GARMIN_PRODUCT_D2_AIR_X10                                            ((FIT_GARMIN_PRODUCT)4125)
+#define FIT_GARMIN_PRODUCT_HRM_PRO_PLUS                                          ((FIT_GARMIN_PRODUCT)4130)
 #define FIT_GARMIN_PRODUCT_DESCENT_G1_ASIA                                       ((FIT_GARMIN_PRODUCT)4132)
+#define FIT_GARMIN_PRODUCT_TACTIX7                                               ((FIT_GARMIN_PRODUCT)4135)
+#define FIT_GARMIN_PRODUCT_INSTINCT_CROSSOVER                                    ((FIT_GARMIN_PRODUCT)4155)
+#define FIT_GARMIN_PRODUCT_EDGE_EXPLORE2                                         ((FIT_GARMIN_PRODUCT)4169)
 #define FIT_GARMIN_PRODUCT_TACX_NEO_SMART                                        ((FIT_GARMIN_PRODUCT)4265) // Neo Smart, Tacx
 #define FIT_GARMIN_PRODUCT_TACX_NEO2_SMART                                       ((FIT_GARMIN_PRODUCT)4266) // Neo 2 Smart, Tacx
 #define FIT_GARMIN_PRODUCT_TACX_NEO2_T_SMART                                     ((FIT_GARMIN_PRODUCT)4267) // Neo 2T Smart, Tacx
@@ -1582,10 +1610,12 @@ typedef FIT_UINT16 FIT_GARMIN_PRODUCT;
 #define FIT_GARMIN_PRODUCT_TACX_FLOW_SMART                                       ((FIT_GARMIN_PRODUCT)4270) // Flow Smart, Tacx
 #define FIT_GARMIN_PRODUCT_TACX_VORTEX_SMART                                     ((FIT_GARMIN_PRODUCT)4271) // Vortex Smart, Tacx
 #define FIT_GARMIN_PRODUCT_TACX_BUSHIDO_SMART                                    ((FIT_GARMIN_PRODUCT)4272) // Bushido Smart, Tacx
-#define FIT_GARMIN_PRODUCT_TACX_GENIUS_SMART                                     ((FIT_GARMIN_PRODUCT)4273) // Genius Smart, Tacx 
+#define FIT_GARMIN_PRODUCT_TACX_GENIUS_SMART                                     ((FIT_GARMIN_PRODUCT)4273) // Genius Smart, Tacx
 #define FIT_GARMIN_PRODUCT_TACX_FLUX_FLUX_S_SMART                                ((FIT_GARMIN_PRODUCT)4274) // Flux/Flux S Smart, Tacx
 #define FIT_GARMIN_PRODUCT_TACX_FLUX2_SMART                                      ((FIT_GARMIN_PRODUCT)4275) // Flux 2 Smart, Tacx
 #define FIT_GARMIN_PRODUCT_TACX_MAGNUM                                           ((FIT_GARMIN_PRODUCT)4276) // Magnum, Tacx
+#define FIT_GARMIN_PRODUCT_EDGE_1040_ASIA                                        ((FIT_GARMIN_PRODUCT)4305)
+#define FIT_GARMIN_PRODUCT_ENDURO2                                               ((FIT_GARMIN_PRODUCT)4341)
 #define FIT_GARMIN_PRODUCT_SDM4                                                  ((FIT_GARMIN_PRODUCT)10007) // SDM4 footpod
 #define FIT_GARMIN_PRODUCT_EDGE_REMOTE                                           ((FIT_GARMIN_PRODUCT)10014)
 #define FIT_GARMIN_PRODUCT_TACX_TRAINING_APP_WIN                                 ((FIT_GARMIN_PRODUCT)20533)
@@ -1598,7 +1628,7 @@ typedef FIT_UINT16 FIT_GARMIN_PRODUCT;
 #define FIT_GARMIN_PRODUCT_CONNECTIQ_SIMULATOR                                   ((FIT_GARMIN_PRODUCT)65531)
 #define FIT_GARMIN_PRODUCT_ANDROID_ANTPLUS_PLUGIN                                ((FIT_GARMIN_PRODUCT)65532)
 #define FIT_GARMIN_PRODUCT_CONNECT                                               ((FIT_GARMIN_PRODUCT)65534) // Garmin Connect website
-#define FIT_GARMIN_PRODUCT_COUNT                                                 384
+#define FIT_GARMIN_PRODUCT_COUNT                                                 405
 
 typedef FIT_UINT8 FIT_ANTPLUS_DEVICE_TYPE;
 #define FIT_ANTPLUS_DEVICE_TYPE_INVALID                                          FIT_UINT8_INVALID
