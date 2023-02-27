@@ -140,6 +140,7 @@ typedef FIT_UINT16 FIT_MESG_NUM;
 #define FIT_MESG_NUM_MAGNETOMETER_DATA                                           ((FIT_MESG_NUM)208)
 #define FIT_MESG_NUM_BAROMETER_DATA                                              ((FIT_MESG_NUM)209)
 #define FIT_MESG_NUM_ONE_D_SENSOR_CALIBRATION                                    ((FIT_MESG_NUM)210)
+#define FIT_MESG_NUM_TIME_IN_ZONE                                                ((FIT_MESG_NUM)216)
 #define FIT_MESG_NUM_SET                                                         ((FIT_MESG_NUM)225)
 #define FIT_MESG_NUM_STRESS_LEVEL                                                ((FIT_MESG_NUM)227)
 #define FIT_MESG_NUM_DIVE_SETTINGS                                               ((FIT_MESG_NUM)258)
@@ -148,11 +149,15 @@ typedef FIT_UINT16 FIT_MESG_NUM;
 #define FIT_MESG_NUM_EXERCISE_TITLE                                              ((FIT_MESG_NUM)264)
 #define FIT_MESG_NUM_DIVE_SUMMARY                                                ((FIT_MESG_NUM)268)
 #define FIT_MESG_NUM_JUMP                                                        ((FIT_MESG_NUM)285)
+#define FIT_MESG_NUM_SPLIT                                                       ((FIT_MESG_NUM)312)
 #define FIT_MESG_NUM_CLIMB_PRO                                                   ((FIT_MESG_NUM)317)
+#define FIT_MESG_NUM_TANK_UPDATE                                                 ((FIT_MESG_NUM)319)
+#define FIT_MESG_NUM_TANK_SUMMARY                                                ((FIT_MESG_NUM)323)
 #define FIT_MESG_NUM_DEVICE_AUX_BATTERY_INFO                                     ((FIT_MESG_NUM)375)
+#define FIT_MESG_NUM_DIVE_APNEA_ALARM                                            ((FIT_MESG_NUM)393)
 #define FIT_MESG_NUM_MFG_RANGE_MIN                                               ((FIT_MESG_NUM)0xFF00) // 0xFF00 - 0xFFFE reserved for manufacturer specific messages
 #define FIT_MESG_NUM_MFG_RANGE_MAX                                               ((FIT_MESG_NUM)0xFFFE) // 0xFF00 - 0xFFFE reserved for manufacturer specific messages
-#define FIT_MESG_NUM_COUNT                                                       91
+#define FIT_MESG_NUM_COUNT                                                       96
 
 typedef FIT_UINT8 FIT_CHECKSUM;
 #define FIT_CHECKSUM_INVALID                                                     FIT_UINT8_INVALID
@@ -785,9 +790,9 @@ typedef FIT_UINT8 FIT_BACKLIGHT_TIMEOUT; // Timeout in seconds.
 
 typedef FIT_ENUM FIT_EVENT;
 #define FIT_EVENT_INVALID                                                        FIT_ENUM_INVALID
-#define FIT_EVENT_TIMER                                                          ((FIT_EVENT)0) // Group 0.  Start / stop_all
+#define FIT_EVENT_TIMER                                                          ((FIT_EVENT)0) // Group 0. Start / stop_all
 #define FIT_EVENT_WORKOUT                                                        ((FIT_EVENT)3) // start / stop
-#define FIT_EVENT_WORKOUT_STEP                                                   ((FIT_EVENT)4) // Start at beginning of workout.  Stop at end of each step.
+#define FIT_EVENT_WORKOUT_STEP                                                   ((FIT_EVENT)4) // Start at beginning of workout. Stop at end of each step.
 #define FIT_EVENT_POWER_DOWN                                                     ((FIT_EVENT)5) // stop_all group 0
 #define FIT_EVENT_POWER_UP                                                       ((FIT_EVENT)6) // stop_all group 0
 #define FIT_EVENT_OFF_COURSE                                                     ((FIT_EVENT)7) // start / stop group 0
@@ -795,21 +800,21 @@ typedef FIT_ENUM FIT_EVENT;
 #define FIT_EVENT_LAP                                                            ((FIT_EVENT)9) // Stop at end of each lap.
 #define FIT_EVENT_COURSE_POINT                                                   ((FIT_EVENT)10) // marker
 #define FIT_EVENT_BATTERY                                                        ((FIT_EVENT)11) // marker
-#define FIT_EVENT_VIRTUAL_PARTNER_PACE                                           ((FIT_EVENT)12) // Group 1. Start at beginning of activity if VP enabled, when VP pace is changed during activity or VP enabled mid activity.  stop_disable when VP disabled.
-#define FIT_EVENT_HR_HIGH_ALERT                                                  ((FIT_EVENT)13) // Group 0.  Start / stop when in alert condition.
-#define FIT_EVENT_HR_LOW_ALERT                                                   ((FIT_EVENT)14) // Group 0.  Start / stop when in alert condition.
-#define FIT_EVENT_SPEED_HIGH_ALERT                                               ((FIT_EVENT)15) // Group 0.  Start / stop when in alert condition.
-#define FIT_EVENT_SPEED_LOW_ALERT                                                ((FIT_EVENT)16) // Group 0.  Start / stop when in alert condition.
-#define FIT_EVENT_CAD_HIGH_ALERT                                                 ((FIT_EVENT)17) // Group 0.  Start / stop when in alert condition.
-#define FIT_EVENT_CAD_LOW_ALERT                                                  ((FIT_EVENT)18) // Group 0.  Start / stop when in alert condition.
-#define FIT_EVENT_POWER_HIGH_ALERT                                               ((FIT_EVENT)19) // Group 0.  Start / stop when in alert condition.
-#define FIT_EVENT_POWER_LOW_ALERT                                                ((FIT_EVENT)20) // Group 0.  Start / stop when in alert condition.
+#define FIT_EVENT_VIRTUAL_PARTNER_PACE                                           ((FIT_EVENT)12) // Group 1. Start at beginning of activity if VP enabled, when VP pace is changed during activity or VP enabled mid activity. stop_disable when VP disabled.
+#define FIT_EVENT_HR_HIGH_ALERT                                                  ((FIT_EVENT)13) // Group 0. Start / stop when in alert condition.
+#define FIT_EVENT_HR_LOW_ALERT                                                   ((FIT_EVENT)14) // Group 0. Start / stop when in alert condition.
+#define FIT_EVENT_SPEED_HIGH_ALERT                                               ((FIT_EVENT)15) // Group 0. Start / stop when in alert condition.
+#define FIT_EVENT_SPEED_LOW_ALERT                                                ((FIT_EVENT)16) // Group 0. Start / stop when in alert condition.
+#define FIT_EVENT_CAD_HIGH_ALERT                                                 ((FIT_EVENT)17) // Group 0. Start / stop when in alert condition.
+#define FIT_EVENT_CAD_LOW_ALERT                                                  ((FIT_EVENT)18) // Group 0. Start / stop when in alert condition.
+#define FIT_EVENT_POWER_HIGH_ALERT                                               ((FIT_EVENT)19) // Group 0. Start / stop when in alert condition.
+#define FIT_EVENT_POWER_LOW_ALERT                                                ((FIT_EVENT)20) // Group 0. Start / stop when in alert condition.
 #define FIT_EVENT_RECOVERY_HR                                                    ((FIT_EVENT)21) // marker
 #define FIT_EVENT_BATTERY_LOW                                                    ((FIT_EVENT)22) // marker
-#define FIT_EVENT_TIME_DURATION_ALERT                                            ((FIT_EVENT)23) // Group 1.  Start if enabled mid activity (not required at start of activity). Stop when duration is reached.  stop_disable if disabled.
-#define FIT_EVENT_DISTANCE_DURATION_ALERT                                        ((FIT_EVENT)24) // Group 1.  Start if enabled mid activity (not required at start of activity). Stop when duration is reached.  stop_disable if disabled.
-#define FIT_EVENT_CALORIE_DURATION_ALERT                                         ((FIT_EVENT)25) // Group 1.  Start if enabled mid activity (not required at start of activity). Stop when duration is reached.  stop_disable if disabled.
-#define FIT_EVENT_ACTIVITY                                                       ((FIT_EVENT)26) // Group 1..  Stop at end of activity.
+#define FIT_EVENT_TIME_DURATION_ALERT                                            ((FIT_EVENT)23) // Group 1. Start if enabled mid activity (not required at start of activity). Stop when duration is reached. stop_disable if disabled.
+#define FIT_EVENT_DISTANCE_DURATION_ALERT                                        ((FIT_EVENT)24) // Group 1. Start if enabled mid activity (not required at start of activity). Stop when duration is reached. stop_disable if disabled.
+#define FIT_EVENT_CALORIE_DURATION_ALERT                                         ((FIT_EVENT)25) // Group 1. Start if enabled mid activity (not required at start of activity). Stop when duration is reached. stop_disable if disabled.
+#define FIT_EVENT_ACTIVITY                                                       ((FIT_EVENT)26) // Group 1.. Stop at end of activity.
 #define FIT_EVENT_FITNESS_EQUIPMENT                                              ((FIT_EVENT)27) // marker
 #define FIT_EVENT_LENGTH                                                         ((FIT_EVENT)28) // Stop at end of each length.
 #define FIT_EVENT_USER_MARKER                                                    ((FIT_EVENT)32) // marker
@@ -818,11 +823,19 @@ typedef FIT_ENUM FIT_EVENT;
 #define FIT_EVENT_FRONT_GEAR_CHANGE                                              ((FIT_EVENT)42) // marker
 #define FIT_EVENT_REAR_GEAR_CHANGE                                               ((FIT_EVENT)43) // marker
 #define FIT_EVENT_RIDER_POSITION_CHANGE                                          ((FIT_EVENT)44) // marker
-#define FIT_EVENT_ELEV_HIGH_ALERT                                                ((FIT_EVENT)45) // Group 0.  Start / stop when in alert condition.
-#define FIT_EVENT_ELEV_LOW_ALERT                                                 ((FIT_EVENT)46) // Group 0.  Start / stop when in alert condition.
+#define FIT_EVENT_ELEV_HIGH_ALERT                                                ((FIT_EVENT)45) // Group 0. Start / stop when in alert condition.
+#define FIT_EVENT_ELEV_LOW_ALERT                                                 ((FIT_EVENT)46) // Group 0. Start / stop when in alert condition.
 #define FIT_EVENT_COMM_TIMEOUT                                                   ((FIT_EVENT)47) // marker
+#define FIT_EVENT_DIVE_ALERT                                                     ((FIT_EVENT)56) // marker
+#define FIT_EVENT_DIVE_GAS_SWITCHED                                              ((FIT_EVENT)57) // marker
+#define FIT_EVENT_TANK_PRESSURE_RESERVE                                          ((FIT_EVENT)71) // marker
+#define FIT_EVENT_TANK_PRESSURE_CRITICAL                                         ((FIT_EVENT)72) // marker
+#define FIT_EVENT_TANK_LOST                                                      ((FIT_EVENT)73) // marker
 #define FIT_EVENT_RADAR_THREAT_ALERT                                             ((FIT_EVENT)75) // start/stop/marker
-#define FIT_EVENT_COUNT                                                          37
+#define FIT_EVENT_TANK_BATTERY_LOW                                               ((FIT_EVENT)76) // marker
+#define FIT_EVENT_TANK_POD_CONNECTED                                             ((FIT_EVENT)81) // marker - tank pod has connected
+#define FIT_EVENT_TANK_POD_DISCONNECTED                                          ((FIT_EVENT)82) // marker - tank pod has lost connection
+#define FIT_EVENT_COUNT                                                          45
 
 typedef FIT_ENUM FIT_EVENT_TYPE;
 #define FIT_EVENT_TYPE_INVALID                                                   FIT_ENUM_INVALID

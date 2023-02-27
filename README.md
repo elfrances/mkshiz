@@ -91,3 +91,9 @@ The metric can be: elevation, grade, speed.
 
 When running the tool under Windows/Cygwin notice that the drive letters used in path names, such as C: and D:, are replaced by the corresponding "cygdrive".  For example, the path "C:\Users\Marcelo\Documents" becomes "/cygdrive/c/Users/Marcelo/Documents", and the path "D:\FulGaz\Videos" becomes "/cygdrive/d/FulGaz/Videos".
 
+## Credits ##
+
+The code used to process the input FIT file is based on Garmin's [FitSDK](https://developer.garmin.com/fit/download/).
+
+The code for computing the Savitzky-Golay filter is based on Fredrik Jonsson's [sgfilter](http://jonsson.eu/programs/cweb/sgfilter/). 
+
