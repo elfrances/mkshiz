@@ -945,6 +945,32 @@ const char *fitWahooFitnessProduct(FIT_UINT16 product)
     return fmtBuf;
 }
 
+// Shimano products
+
+typedef FIT_UINT16 FIT_SHIMANO_PRODUCT;
+#define FIT_SHIMANO_PRODUCT_INVALID                                              FIT_UINT16_INVALID
+
+static const char *fitShimanoProductTbl[] = {
+};
+
+const char *fitShimanoProduct(FIT_UINT16 product)
+{
+    const char *str = NULL;
+    static char fmtBuf[32];
+
+    if (product != FIT_SHIMANO_PRODUCT_INVALID) {
+        str = fitShimanoProductTbl[product];
+    }
+
+    if (str != NULL) {
+        return str;
+    } else {
+        snprintf(fmtBuf, sizeof (fmtBuf), "%u", product);
+    }
+
+    return fmtBuf;
+}
+
 // Favero Electronics products
 
 typedef FIT_UINT16 FIT_FAVERO_ELECTRONICS_PRODUCT;
@@ -975,6 +1001,36 @@ const char *fitFaveroElectronicsProduct(FIT_UINT16 product)
     return fmtBuf;
 }
 
+// SRAM products
+
+typedef FIT_UINT16 FIT_SRAM_PRODUCT;
+#define FIT_SRAM_PRODUCT_INVALID                                                 FIT_UINT16_INVALID
+#define FIT_SRAM_ETAP_AXS                                                        ((FIT_SRAM_PRODUCT)1003)
+#define FIT_SRAM_EAGLE_XX1_AXS                                                   ((FIT_SRAM_PRODUCT)1013)
+
+static const char *fitSramProductTbl[] = {
+        [FIT_SRAM_ETAP_AXS] "ETAP_AXS",
+        [FIT_SRAM_EAGLE_XX1_AXS] "EAGLE_XX1_AXS",
+};
+
+const char *fitSramProduct(FIT_UINT16 product)
+{
+    const char *str = NULL;
+    static char fmtBuf[32];
+
+    if (product != FIT_SRAM_PRODUCT_INVALID) {
+        str = fitSramProductTbl[product];
+    }
+
+    if (str != NULL) {
+        return str;
+    } else {
+        snprintf(fmtBuf, sizeof (fmtBuf), "%u", product);
+    }
+
+    return fmtBuf;
+}
+
 const char *fitProduct(FIT_MANUFACTURER manufacturer, FIT_UINT16 product)
 {
     static char fmtBuf[32];
@@ -983,8 +1039,12 @@ const char *fitProduct(FIT_MANUFACTURER manufacturer, FIT_UINT16 product)
         return fitGarminProduct(product);
     } else if (manufacturer == FIT_MANUFACTURER_WAHOO_FITNESS) {
         return fitWahooFitnessProduct(product);
+    } else if (manufacturer == FIT_MANUFACTURER_SHIMANO) {
+        return fitShimanoProduct(product);
     } else if (manufacturer == FIT_MANUFACTURER_FAVERO_ELECTRONICS) {
         return fitFaveroElectronicsProduct(product);
+    } else if (manufacturer == FIT_MANUFACTURER_SRAM) {
+        return fitSramProduct(product);
     } else {
         snprintf(fmtBuf, sizeof (fmtBuf), "%u", product);
     }

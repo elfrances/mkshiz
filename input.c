@@ -50,12 +50,11 @@ int parseFitFile(CmdArgs *pArgs, GpsTrk *pTrk, const char *inFile)
                 const FIT_UINT8 *mesg = FitConvert_GetMessageData();
                 FIT_MESG_NUM mesgNum = FitConvert_GetMessageNumber();
 
-                //printf("Mesg %d (%s) - ", mesgIndex, fitMesgNum(mesgNum));
-
                 switch (mesgNum) {
                     case FIT_MESG_NUM_FILE_ID: {
                         const FIT_FILE_ID_MESG *id = (FIT_FILE_ID_MESG *) mesg;
-                        //printf("File ID: type=%u, number=%u manufacturer=%u\n",
+                        //printf("%s: type=%u, number=%u manufacturer=%u\n",
+                        //        fitMesgNum(mesgNum),
                         //        id->type, id->number, id->manufacturer);
                         manufacturer = id->manufacturer;
                         break;
@@ -63,36 +62,41 @@ int parseFitFile(CmdArgs *pArgs, GpsTrk *pTrk, const char *inFile)
 
                     case FIT_MESG_NUM_DEVICE_SETTINGS: {
                         //const FIT_DEVICE_SETTINGS_MESG *dev = (FIT_DEVICE_SETTINGS_MESG *) mesg;
-                        //printf("Device Settings: utc_offset=%u time_offset=%u:%u clock_time=%u\n",
+                        //printf("%s: utc_offset=%u time_offset=%u:%u clock_time=%u\n",
+                        //        fitMesgNum(mesgNum),
                         //        dev->utc_offset, dev->time_offset[0], dev->time_offset[1], dev->clock_time);
                         break;
                     }
 
                     case FIT_MESG_NUM_USER_PROFILE: {
                         //const FIT_USER_PROFILE_MESG *user_profile = (FIT_USER_PROFILE_MESG *) mesg;
-                        //printf("User Profile: weight=%0.1fkg gender=%u age=%u\n",
+                        //printf("%s: weight=%0.1fkg gender=%u age=%u\n",
+                        //        fitMesgNum(mesgNum),
                         //        user_profile->weight / 10.0f, user_profile->gender, user_profile->age);
                         break;
                     }
 
                     case FIT_MESG_NUM_ZONES_TARGET: {
-                        //printf("Zones Target: \n");
+                        //printf("%s: \n");
                         break;
                     }
 
                     case FIT_MESG_NUM_HR_ZONE: {
-                        //printf("HR Zone: \n");
+                        //printf("%s: \n");
                         break;
                     }
 
                     case FIT_MESG_NUM_POWER_ZONE: {
-                        //printf("Power Zone: \n");
+                        //printf("%s: \n");
                         break;
                     }
 
                     case FIT_MESG_NUM_SPORT: {
                         const FIT_SPORT_MESG *sport = (FIT_SPORT_MESG *) mesg;
-                        //printf("Sport: sport=%u sub_sport=%u\n", sport->sport, sport->sub_sport);
+                        //printf("%s: sport=%u sub_sport=%u\n",
+                        //        fitMesgNum(mesgNum),
+                        //        sport->sport, sport->sub_sport);
+
                         if (sport->sport == FIT_SPORT_RUNNING) {
                             pTrk->actType = run;
                         } else if (sport->sport == FIT_SPORT_CYCLING) {
@@ -109,7 +113,8 @@ int parseFitFile(CmdArgs *pArgs, GpsTrk *pTrk, const char *inFile)
 
                     case FIT_MESG_NUM_SESSION: {
                         //const FIT_SESSION_MESG *session = (FIT_SESSION_MESG *) mesg;
-                        //printf("Session: timestamp=%u start_lat=%d start_long=%d elapsed_time=%d distance=%d num_laps: %d\n",
+                        //printf("%s: timestamp=%u start_lat=%d start_long=%d elapsed_time=%d distance=%d num_laps: %d\n",
+                        //        fitMesgNum(mesgNum),
                         //        session->timestamp, session->start_position_lat, session->start_position_long,
                         //        session->total_elapsed_time, session->total_distance, session->num_laps);
                         break;
@@ -117,7 +122,8 @@ int parseFitFile(CmdArgs *pArgs, GpsTrk *pTrk, const char *inFile)
 
                     case FIT_MESG_NUM_LAP: {
                         //const FIT_LAP_MESG *lap = (FIT_LAP_MESG *) mesg;
-                        //printf("Lap: timestamp=%u start_lat=%d start_long=%d end_lat=%d end_long=%d elapsed_time=%d distance=%d\n",
+                        //printf("%s: timestamp=%u start_lat=%d start_long=%d end_lat=%d end_long=%d elapsed_time=%d distance=%d\n",
+                        //        fitMesgNum(mesgNum),
                         //        lap->timestamp, lap->start_position_lat, lap->end_position_long, lap->end_position_lat, lap->end_position_long,
                         //        lap->total_elapsed_time, lap->total_distance);
                         break;
@@ -125,8 +131,9 @@ int parseFitFile(CmdArgs *pArgs, GpsTrk *pTrk, const char *inFile)
 
                     case FIT_MESG_NUM_RECORD: {
                         const FIT_RECORD_MESG *record = (FIT_RECORD_MESG *) mesg;
-    #if 0
-                        printf("Record: timestamp=%u latitude=%d longitude=%d distance=%u enh_speed=%u enh_altitude=%u altitude=%u speed=%u power=%u grade=%u vertical_speed=%u heart_rate=%u cadence=%u temp=%d\n",
+#if 0
+                        printf("%s: timestamp=%u latitude=%d longitude=%d distance=%u enh_speed=%u enh_altitude=%u altitude=%u speed=%u power=%u grade=%u vertical_speed=%u heart_rate=%u cadence=%u temp=%d\n",
+                                fitMesgNum(mesgNum),
                                 record->timestamp, record->position_lat, record->position_long, record->distance,
                                 record->enhanced_speed, record->enhanced_altitude,
                                 record->altitude, record->speed, record->power, record->grade,
@@ -150,7 +157,7 @@ int parseFitFile(CmdArgs *pArgs, GpsTrk *pTrk, const char *inFile)
 
                             printf(", distance = %0.3fm", accumulated_distance16 / 16.0f);
                         }
-    #endif
+#endif
                         if (timerRunning) {
                             // The Strava app generates a pair of FIT RECORD messages
                             // for each trackpoint (i.e. timestamp). The first one seems
@@ -242,7 +249,8 @@ int parseFitFile(CmdArgs *pArgs, GpsTrk *pTrk, const char *inFile)
 
                     case FIT_MESG_NUM_EVENT: {
                         const FIT_EVENT_MESG *event = (FIT_EVENT_MESG *) mesg;
-                        //printf("Event: timestamp=%u event=%s event_type=%s\n",
+                        //printf("%s: timestamp=%u event=%s event_type=%s\n",
+                        //        fitMesgNum(mesgNum),
                         //        event->timestamp, fitEvent(event->event), fitEventType(event->event_type));
                         if (event->event == FIT_EVENT_TIMER) {
                             if (event->event_type == FIT_EVENT_TYPE_START) {
@@ -256,13 +264,16 @@ int parseFitFile(CmdArgs *pArgs, GpsTrk *pTrk, const char *inFile)
 
                     case FIT_MESG_NUM_WORKOUT: {
                         //const FIT_WORKOUT_MESG *workout = (FIT_WORKOUT_MESG *) mesg;
-                        //printf("Workout: sport=%u sub_sport=%u\n", workout->sport, workout->sub_sport);
+                        //printf("%s: sport=%u sub_sport=%u\n",
+                        //        fitMesgNum(mesgNum),
+                        //        workout->sport, workout->sub_sport);
                         break;
                     }
 
                     case FIT_MESG_NUM_DEVICE_INFO: {
                         //const FIT_DEVICE_INFO_MESG *device_info = (FIT_DEVICE_INFO_MESG *) mesg;
-                        //printf("Device Info: timestamp=%u manufacturer=%s product=%s product_name=%s device_type=%s battery_status=%s descriptor=%s\n",
+                        //printf("%s: timestamp=%u manufacturer=%s product=%s product_name=%s device_type=%s battery_status=%s descriptor=%s\n",
+                        //        fitMesgNum(mesgNum),
                         //        device_info->timestamp, fitManufacturer(device_info->manufacturer), fitProduct(device_info->manufacturer, device_info->product), device_info->product_name,
                         //        fitAntPlusDeviceType(device_info->device_type), fitBatteryStatus(device_info->battery_status), device_info->descriptor);
                         break;
@@ -270,7 +281,8 @@ int parseFitFile(CmdArgs *pArgs, GpsTrk *pTrk, const char *inFile)
 
                     case FIT_MESG_NUM_ACTIVITY: {
                         //const FIT_ACTIVITY_MESG *activity = (FIT_ACTIVITY_MESG *) mesg;
-                        //printf("Activity: timestamp=%u, type=%u, event=%u, event_type=%u, num_sessions=%u\n",
+                        //printf("%s: timestamp=%u, type=%u, event=%u, event_type=%u, num_sessions=%u\n",
+                        //        fitMesgNum(mesgNum),
                         //       activity->timestamp, activity->type,
                         //       activity->event, activity->event_type,
                         //       activity->num_sessions);
@@ -288,31 +300,40 @@ int parseFitFile(CmdArgs *pArgs, GpsTrk *pTrk, const char *inFile)
 
                     case FIT_MESG_NUM_FILE_CREATOR: {
                         //const FIT_FILE_CREATOR_MESG *creator = (FIT_FILE_CREATOR_MESG *) mesg;
-                        //printf("File Creator: sw_ver=%u hw_ver=%u\n", creator->software_version, creator->hardware_version);
+                        //printf("%s: sw_ver=%u hw_ver=%u\n",
+                        //        fitMesgNum(mesgNum),
+                        //        creator->software_version, creator->hardware_version);
                         break;
                     }
 
                     case FIT_MESG_NUM_TRAINING_FILE: {
                         //const FIT_TRAINING_FILE_MESG *tf = (FIT_TRAINING_FILE_MESG *) mesg;
-                        //printf("Training File: timestamp=%u manufacturer=%s product=%s type=%s\n",
+                        //printf("%s: timestamp=%u manufacturer=%s product=%s type=%s\n",
+                        //        fitMesgNum(mesgNum),
                         //        tf->time_created, fitManufacturer(tf->manufacturer), fitProduct(tf->manufacturer, tf->product), fitFile(tf->type));
                     }
 
                     case FIT_MESG_NUM_HRV: {
                         //const FIT_HRV_MESG *hrv = (FIT_HRV_MESG *) mesg;
-                        //printf("HRV: time=%.3lf\n", ((double) hrv->time[0] / 1000.0));
+                        //printf("%s: time=%.3lf\n",
+                        //        fitMesgNum(mesgNum),
+                        //        ((double) hrv->time[0] / 1000.0));
                         break;
                     }
 
                     case FIT_MESG_NUM_FIELD_DESCRIPTION: {
                         //const FIT_FIELD_DESCRIPTION_MESG *desc = (FIT_FIELD_DESCRIPTION_MESG *) mesg;
-                        //printf("Field Description: field_name=%s\n", desc->field_name);
+                        //printf("%s: field_name=%s\n",
+                        //        fitMesgNum(mesgNum),
+                        //        desc->field_name);
                         break;
                     }
 
                     case FIT_MESG_NUM_DEVELOPER_DATA_ID: {
                         //const FIT_DEVELOPER_DATA_ID_MESG *id = (FIT_DEVELOPER_DATA_ID_MESG *) mesg;
-                        //printf("Developer Data ID: manufacturer_id=%u\n", id->manufacturer_id);
+                        //printf("%s: manufacturer_id=%u\n",
+                        //        fitMesgNum(mesgNum),
+                        //        id->manufacturer_id);
                         break;
                     }
 
@@ -320,14 +341,12 @@ int parseFitFile(CmdArgs *pArgs, GpsTrk *pTrk, const char *inFile)
                         if ((mesgNum >= FIT_MESG_NUM_MFG_RANGE_MIN) && (mesgNum <= FIT_MESG_NUM_MFG_RANGE_MAX)) {
                             // TBD
                         } else {
-                            //printf("Unknown: %u\n", mesgNum);
+                            //printf("%s: %u\n", mesgNum);
                         }
                         break;
                     }
                 }
             }
-
-            //printf("\n");
 
             mesgIndex++;
         } while (conRet == FIT_CONVERT_MESSAGE_AVAILABLE);
