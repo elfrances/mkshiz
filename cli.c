@@ -35,9 +35,12 @@ static const char *cliHelp = \
     "summary [detail]       Print a summary of the data.\n"
     "trim <a> <b>           Remove the trackpoints between points <a> and <b>\n"
     "                       (inclusive) and close the distance and time gaps\n"
-    "                       between them. The trackpoints can be specified by\n"
-    "                       their indices or by their timestamps.\n"
+    "                       between them.\n"
     "undo                   Revert the last operation.\n"
+    "\n"
+    "The trackpoints can be specified by their index or by their timestamp. And\n"
+    "the keywords \"start\" and \"end\" indicate the first and last trackpoints,\n"
+    "respectively.\n"
     "\n"
     "The metric can be: elevation, grade, speed.\n"
     "\n";
@@ -435,7 +438,11 @@ static int getTrkPt(GpsTrk *pTrk, const char *arg)
     int hr, min, sec;
     int index = -1;
 
-    if (sscanf(arg, "%d:%d:%d", &hr, &min, &sec) == 3) {
+    if (strcmp(arg, "start") == 0) {
+        return 0;
+    } else if (strcmp(arg, "end") == 0) {
+        return (pTrk->numTrkPts - 1);
+    } else if (sscanf(arg, "%d:%d:%d", &hr, &min, &sec) == 3) {
         if ((hr >= 0) &&
             (min >= 0) && (min <= 59) &&
             (sec >= 0) && (sec <= 59)) {
