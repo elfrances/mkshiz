@@ -20,11 +20,80 @@
 //   https://developer.garmin.com/fit/cookbook/datetime/
 static const time_t fitEpoch = 631065600;
 
+// Add a new TrkPt using the data in the RECORD message
+static int addTrkPt(GpsTrk *pTrk, const char *inFile,
+                    int mesgIndex, const FIT_RECORD_MESG *record)
+{
+    TrkPt *pTrkPt = NULL;
+
+    // Alloc and init new TrkPt object
+    if ((pTrkPt = newTrkPt(pTrk->numTrkPts++, inFile, mesgIndex)) == NULL) {
+        fprintf(stderr, "Failed to create TrkPt object !!!\n");
+        return -1;
+    }
+
+    if (record->timestamp != FIT_DATE_TIME_INVALID) {
+        pTrkPt->timestamp = (double) ((time_t) record->timestamp + fitEpoch);   // in s since UTC Epoch
+    }
+
+    if (record->position_lat != FIT_SINT32_INVALID) {
+        pTrkPt->latitude = ((double) record->position_lat / (double) 0x7FFFFFFF) * (double) 180.0;
+    }
+
+    if (record->position_long != FIT_SINT32_INVALID) {
+        pTrkPt->longitude = ((double) record->position_long / (double) 0x7FFFFFFF) * (double) 180.0;
+    }
+
+    if (record->distance != FIT_UINT32_INVALID) {
+        pTrkPt->distance = ((double) record->distance / (double) 100.0); // in m
+    }
+
+    if (record->enhanced_altitude != FIT_UINT32_INVALID) {
+        pTrkPt->elevation = (((double) record->enhanced_altitude / (double) 5.0) - (double) 500.0);    // in m
+    } else if (record->altitude != FIT_UINT16_INVALID) {
+        pTrkPt->elevation = (((double) record->altitude / (double) 5.0) - (double) 500.0);    // in m
+    }
+
+    if (record->enhanced_speed != FIT_UINT32_INVALID) {
+        pTrkPt->speed = ((double) record->enhanced_speed / (double) 1000.0);  // in m/s
+    } else if (record->speed != FIT_UINT16_INVALID) {
+        pTrkPt->speed = ((double) record->speed / (double) 1000.0);  // in m/s
+    }
+
+    if (record->grade != FIT_SINT16_INVALID) {
+        pTrkPt->grade = record->grade;
+    }
+
+    if (record->temperature != FIT_SINT8_INVALID) {
+        pTrkPt->ambTemp = record->temperature;
+        pTrk->inMask |= SD_ATEMP;
+    }
+
+    if (record->cadence != FIT_UINT8_INVALID) {
+        pTrkPt->cadence = record->cadence;
+        pTrk->inMask |= SD_CADENCE;
+    }
+
+    if (record->heart_rate != FIT_UINT8_INVALID) {
+        pTrkPt->heartRate = record->heart_rate;
+        pTrk->inMask |= SD_HR;
+    }
+
+    if (record->power != FIT_UINT16_INVALID) {
+        pTrkPt->power = record->power;
+        pTrk->inMask |= SD_POWER;
+    }
+
+    // Insert track point at the tail of the queue
+    TAILQ_INSERT_TAIL(&pTrk->trkPtList, pTrkPt, tqEntry);
+
+    return 0;
+}
+
 // Parse the FIT file and create a list of Track Points (TrkPt's)
 int parseFitFile(CmdArgs *pArgs, GpsTrk *pTrk, const char *inFile)
 {
     FILE *fp;
-    TrkPt *pTrkPt = NULL;
     FIT_UINT8 inBuf[8];
     FIT_CONVERT_RETURN conRet = FIT_CONVERT_CONTINUE;
     FIT_UINT32 bufSize;
@@ -177,68 +246,11 @@ int parseFitFile(CmdArgs *pArgs, GpsTrk *pTrk, const char *inFile)
                                  (record->enhanced_altitude == FIT_UINT32_INVALID))) {
                                 //printf(" *** SKIPPED ***");
                             } else {
-                                // Alloc and init new TrkPt object
-                                if ((pTrkPt = newTrkPt(pTrk->numTrkPts++, inFile, mesgIndex)) == NULL) {
-                                    fprintf(stderr, "Failed to create TrkPt object !!!\n");
+                                // Add new TrkPt object
+                                if (addTrkPt(pTrk, inFile, mesgIndex, record) != 0) {
+                                    fprintf(stderr, "Failed to add TrkPt object !!!\n");
                                     return -1;
                                 }
-
-                                if (record->timestamp != FIT_DATE_TIME_INVALID) {
-                                    pTrkPt->timestamp = (double) ((time_t) record->timestamp + fitEpoch);   // in s since UTC Epoch
-                                }
-
-                                if (record->position_lat != FIT_SINT32_INVALID) {
-                                    pTrkPt->latitude = ((double) record->position_lat / (double) 0x7FFFFFFF) * (double) 180.0;
-                                }
-
-                                if (record->position_long != FIT_SINT32_INVALID) {
-                                    pTrkPt->longitude = ((double) record->position_long / (double) 0x7FFFFFFF) * (double) 180.0;
-                                }
-
-                                if (record->distance != FIT_UINT32_INVALID) {
-                                    pTrkPt->distance = ((double) record->distance / (double) 100.0); // in m
-                                }
-
-                                if (record->enhanced_altitude != FIT_UINT32_INVALID) {
-                                    pTrkPt->elevation = (((double) record->enhanced_altitude / (double) 5.0) - (double) 500.0);    // in m
-                                } else if (record->altitude != FIT_UINT16_INVALID) {
-                                    pTrkPt->elevation = (((double) record->altitude / (double) 5.0) - (double) 500.0);    // in m
-                                }
-
-                                if (record->enhanced_speed != FIT_UINT32_INVALID) {
-                                    pTrkPt->speed = ((double) record->enhanced_speed / (double) 1000.0);  // in m/s
-                                } else if (record->speed != FIT_UINT16_INVALID) {
-                                    pTrkPt->speed = ((double) record->speed / (double) 1000.0);  // in m/s
-                                }
-
-                                if (record->grade != FIT_SINT16_INVALID) {
-                                    pTrkPt->grade = record->grade;
-                                }
-
-                                if (record->temperature != FIT_SINT8_INVALID) {
-                                    pTrkPt->ambTemp = record->temperature;
-                                    pTrk->inMask |= SD_ATEMP;
-                                }
-
-                                if (record->cadence != FIT_UINT8_INVALID) {
-                                    pTrkPt->cadence = record->cadence;
-                                    pTrk->inMask |= SD_CADENCE;
-                                }
-
-                                if (record->heart_rate != FIT_UINT8_INVALID) {
-                                    pTrkPt->heartRate = record->heart_rate;
-                                    pTrk->inMask |= SD_HR;
-                                }
-
-                                if (record->power != FIT_UINT16_INVALID) {
-                                    pTrkPt->power = record->power;
-                                    pTrk->inMask |= SD_POWER;
-                                }
-
-                                // Insert track point at the tail of the queue
-                                TAILQ_INSERT_TAIL(&pTrk->trkPtList, pTrkPt, tqEntry);
-
-                                pTrkPt = NULL;
                             }
                         } else {
                             fprintf(stderr, "Hu? Timer not running !!!\n");
