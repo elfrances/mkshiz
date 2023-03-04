@@ -130,8 +130,15 @@ static double compBearing(const TrkPt *p1, const TrkPt *p2)
 
 int computeMinMaxValues(GpsTrk *pTrk)
 {
-    TrkPt *p1 = TAILQ_FIRST(&pTrk->trkPtList);  // previous TrkPt
-    TrkPt *p2 = TAILQ_NEXT(p1, tqEntry);    // current TrkPt
+    TrkPt *p1;  // previous TrkPt
+    TrkPt *p2;  // current TrkPt
+
+    if ((p1 = TAILQ_FIRST(&pTrk->trkPtList)) == NULL) {
+        // Empty track!
+        return 0;
+    }
+
+    p2 = TAILQ_NEXT(p1, tqEntry);
 
     // Initialize the min/max values
     pTrk->minSpeed = +999.9;
@@ -268,8 +275,18 @@ int computeMinMaxValues(GpsTrk *pTrk)
 
 int compMetrics(GpsTrk *pTrk, const CmdArgs *pArgs)
 {
-    TrkPt *p1 = TAILQ_FIRST(&pTrk->trkPtList);  // previous TrkPt
-    TrkPt *p2 = TAILQ_NEXT(p1, tqEntry);    // current TrkPt
+    TrkPt *p1;  // previous TrkPt
+    TrkPt *p2;  // current TrkPt
+
+    if ((p1 = TAILQ_FIRST(&pTrk->trkPtList)) == NULL) {
+        // Empty track!
+        return 0;
+    }
+
+    if ((p2 = TAILQ_NEXT(p1, tqEntry)) == NULL) {
+        // Hu? Only one TrkPt ?
+        return 0;
+    }
 
     // At this point p1 points to the first trackpoint in the
     // track, which is used as the baseline...
@@ -368,7 +385,7 @@ int compMetrics(GpsTrk *pTrk, const CmdArgs *pArgs)
     return 0;
 }
 
-static double smaGetVal(const TrkPt *p, ActMetric smaMetric)
+static double metricGetValue(const TrkPt *p, ActMetric smaMetric)
 {
     if (smaMetric == elevation) {
         return (double) p->elevation;
@@ -379,7 +396,7 @@ static double smaGetVal(const TrkPt *p, ActMetric smaMetric)
     }
 }
 
-static void smaSetVal(TrkPt *p, ActMetric smaMetric, double value)
+static void metricSetValue(TrkPt *p, ActMetric smaMetric, double value)
 {
     if (smaMetric == elevation) {
         p->elevation = value;
@@ -393,36 +410,45 @@ static void smaSetVal(TrkPt *p, ActMetric smaMetric, double value)
 // Compute the Centered Moving Average of the specified metric
 int compCMA(GpsTrk *pTrk, const CmdArgs *pArgs)
 {
+    ActMetric actMetric = pArgs->actMetric;
     int n = (pArgs->smaWindow - 1) / 2;    // number of points to the L/R of the given point
     TrkPt *p;
 
     TAILQ_FOREACH(p, &pTrk->trkPtList, tqEntry) {
-        if (p->index >= (n+1)) {
-            int i;
+        int index = p->index;
+
+        if ((index >= pArgs->range.from) && (index <= pArgs->range.to)) {
+            int i, numPts;
             TrkPt *tp;
 
             p->adjVal = 0.0;
+            numPts = 0;
 
             // Points before the given point
             for (i = 0, tp = TAILQ_PREV(p, TrkPtList, tqEntry); (i < n) && (tp != NULL); i++, tp = TAILQ_PREV(tp, TrkPtList, tqEntry)) {
-                p->adjVal += smaGetVal(tp, pArgs->actMetric);
+                p->adjVal += metricGetValue(tp, actMetric);
+                numPts++;
             }
 
             // The given point
-            p->adjVal += smaGetVal(p, pArgs->actMetric);
+            p->adjVal += metricGetValue(p, actMetric);
+            numPts++;
 
             // Points after the given point
             for (i = 0, tp = TAILQ_NEXT(p, tqEntry); (i < n) && (tp != NULL); i++, tp = TAILQ_NEXT(tp, tqEntry)) {
-                p->adjVal += smaGetVal(tp, pArgs->actMetric);
+                p->adjVal += metricGetValue(tp, actMetric);
+                numPts++;
             }
 
-            p->adjVal = p->adjVal / pArgs->smaWindow;
+            p->adjVal = p->adjVal / (double) numPts++;
         }
     }
 
     TAILQ_FOREACH(p, &pTrk->trkPtList, tqEntry) {
-        if (p->index >= pArgs->smaWindow) {
-            smaSetVal(p, pArgs->actMetric, p->adjVal);
+        int index = p->index;
+
+        if ((index >= pArgs->range.from) && (index <= pArgs->range.to)) {
+            metricSetValue(p, actMetric, p->adjVal);
         }
     }
 
@@ -432,11 +458,12 @@ int compCMA(GpsTrk *pTrk, const CmdArgs *pArgs)
 // Compute the Savitzky—Golay of the specified metric
 int compSGF(GpsTrk *pTrk, const CmdArgs *pArgs)
 {
+    ActMetric actMetric = pArgs->actMetric;
     int nl = (pArgs->smaWindow - 1) / 2;    // number of points to the L/R of the given point
     int nr = nl;
     int ld = DEFAULT_LD;
     int m = DEFAULT_M;
-    long mm = pTrk->numTrkPts;
+    long mm = pArgs->range.to - pArgs->range.from + 1;
     double *yr, *yf;
     int i, s;
     TrkPt *p;
@@ -450,14 +477,22 @@ int compSGF(GpsTrk *pTrk, const CmdArgs *pArgs)
 
     i = 1;
     TAILQ_FOREACH(p, &pTrk->trkPtList, tqEntry) {
-        yr[i++] = smaGetVal(p, pArgs->actMetric);
+        int index = p->index;
+
+        if ((index >= pArgs->range.from) && (index <= pArgs->range.to)) {
+            yr[i++] = metricGetValue(p, actMetric);
+        }
     }
 
     s = sgfilter(yr, yf, mm, nl, nr, ld, m);
 
     i = 1;
     TAILQ_FOREACH(p, &pTrk->trkPtList, tqEntry) {
-        smaSetVal(p, pArgs->actMetric, yf[i++]);
+        int index = p->index;
+
+        if ((index >= pArgs->range.from) && (index <= pArgs->range.to)) {
+            metricSetValue(p, actMetric, yf[i++]);
+        }
     }
 
     free_dvector(yr, 1, mm);
@@ -473,26 +508,53 @@ int compSGF(GpsTrk *pTrk, const CmdArgs *pArgs)
 // Compute the Simple Moving Average of the specified metric
 int compSMA(GpsTrk *pTrk, const CmdArgs *pArgs)
 {
+    ActMetric actMetric = pArgs->actMetric;
+    int smaWindow = pArgs->smaWindow;
     TrkPt *p;
 
     TAILQ_FOREACH(p, &pTrk->trkPtList, tqEntry) {
-        if (p->index >= pArgs->smaWindow) {
-            TrkPt *tp = p;
+        int index = p->index;
 
-            p->adjVal = 0.0;
+        if ((index >= pArgs->range.from) && (index <= pArgs->range.to)) {
+            if (index >= smaWindow) {
+                TrkPt *tp = p;
 
-            for (int n = 0; n < pArgs->smaWindow; n++) {
-                p->adjVal += smaGetVal(tp, pArgs->actMetric);
-                tp = TAILQ_PREV(tp, TrkPtList, tqEntry);
+                p->adjVal = 0.0;
+
+                for (int n = 0; n < smaWindow; n++) {
+                    p->adjVal += metricGetValue(tp, actMetric);
+                    tp = TAILQ_PREV(tp, TrkPtList, tqEntry);
+                }
+
+                p->adjVal = p->adjVal / smaWindow;
             }
-
-            p->adjVal = p->adjVal / pArgs->smaWindow;
         }
     }
 
     TAILQ_FOREACH(p, &pTrk->trkPtList, tqEntry) {
-        if (p->index >= pArgs->smaWindow) {
-            smaSetVal(p, pArgs->actMetric, p->adjVal);
+        int index = p->index;
+
+        if ((index >= pArgs->range.from) && (index <= pArgs->range.to)) {
+            metricSetValue(p, actMetric, p->adjVal);
+        }
+    }
+
+    return 0;
+}
+
+// Scale the specified metric by the specified factor
+int scaleMetric(GpsTrk *pTrk, const CmdArgs *pArgs)
+{
+    TrkPt *p;
+    ActMetric actMetric = pArgs->actMetric;
+    double scaleFactor = pArgs->scaleFactor;
+
+    TAILQ_FOREACH(p, &pTrk->trkPtList, tqEntry) {
+        int index = p->index;
+
+        if ((index >= pArgs->range.from) && (index <= pArgs->range.to)) {
+            double value = metricGetValue(p, actMetric);
+            metricSetValue(p, actMetric, (value * scaleFactor));
         }
     }
 
@@ -520,12 +582,14 @@ int saveTrkPts(GpsTrk *pTrk)
 
 int restoreTrkPts(GpsTrk *pTrk)
 {
-    TrkPt *p = TAILQ_FIRST(&pTrk->trkPtList);
+    TrkPt *p;
 
-    // Delete all TrkPt's from the working list
-    do {
-        p = remTrkPt(pTrk, p);
-    } while (p != NULL);
+    if ((p = TAILQ_FIRST(&pTrk->trkPtList)) != NULL) {
+        // Delete all TrkPt's from the working list
+        do {
+            p = remTrkPt(pTrk, p);
+        } while (p != NULL);
+    }
 
     // Move all the saved TrkPt's to the working list
     pTrk->numTrkPts = 0;
@@ -534,9 +598,6 @@ int restoreTrkPts(GpsTrk *pTrk)
         TAILQ_INSERT_TAIL(&pTrk->trkPtList, p, tqEntry);
         pTrk->numTrkPts++;
     }
-
-    // Update the start time
-    pTrk->startTime = TAILQ_FIRST(&pTrk->trkPtList)->timestamp;
 
     return 0;
 }

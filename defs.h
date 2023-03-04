@@ -53,6 +53,12 @@ typedef enum ActMetric {
     gradeChange = 4,    // grade change
 } ActMetric;
 
+// TrkPt range
+typedef struct TrkPtRange {
+    int from;
+    int to;
+} TrkPtRange;
+
 #define MAX_ARGS    8
 
 typedef struct CmdArgs {
@@ -72,6 +78,8 @@ typedef struct CmdArgs {
     Bool detail;            // show detailed information
     ActMetric actMetric;    // activity metric to use
     int smaWindow;          // SMA window size
+    TrkPtRange range;       // TrkPt range
+    double scaleFactor;     // scaling factor
 } CmdArgs;
 
 // Sensor data bit masks

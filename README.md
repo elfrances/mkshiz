@@ -65,24 +65,27 @@ While the tool can process a FIT file directly, the most useful features are ava
 CLI> help
 Supported CLI commands:
 
-cma <metric> <window>  Smooth the specified metric using a CMA filter.
-exit                   Exit the tool
-help                   Print this help
-history                Print the command history.
-max <metric> <value>   Limit the maximum value of the specified metric.
-min <metric> <value>   Limit the minimum value of the specified metric.
-save <file> [<format>] Save the data in the specified format and file.
-                       The output format can be: csv, gpx, shiz, tcx.
-sgf <metric> <window>  Smooth the specified metric using the Savitzky-Golay
-                       filter.
-show [<a> <b>]         Show trackpoints in plain text form.
-sma <metric> <window>  Smooth the specified metric using an SMA filter.
-summary [detail]       Print a summary of the data.
-trim <a> <b>           Remove the trackpoints between points <a> and <b>
-                       (inclusive) and close the distance and time gaps
-                       between them. The trackpoints can be specified by
-                       their indices or by their timestamps.
-undo                   Revert the last operation.
+cma <metric> <window> [<range>]    Smooth the specified metric using a CMA filter.
+exit                               Exit the tool
+help                               Print this help
+history                            Print the command history.
+max <metric> <value> [<range>]     Limit the maximum value of the specified metric.
+min <metric> <value> [<range>]     Limit the minimum value of the specified metric.
+save <file> [<format>]             Save the data in the specified format and file.
+                                   The output format can be: csv, gpx, shiz, tcx.
+scale <metric> <factor> [<range>]  Scale the specified metric by the specified factor.
+sgf <metric> <window> [<range>]    Smooth the specified metric using the Savitzky-Golay
+                                   filter.
+show [<range>]                     Show trackpoints in plain text form.
+sma <metric> <window> [<range>]    Smooth the specified metric using an SMA filter.
+summary [detail]                   Print a summary of the data.
+trim <range>                       Remove the trackpoints within the specified range
+                                   and close the distance and time gaps between them.
+undo                               Revert the last operation.
+
+The first and last trackpoints within a range can be specified by either their index or by
+their timestamp. Additionally, the keywords "start" and "end" are used to indicate the
+first and last trackpoints in the entire activity, respectively.
 
 The metric can be: elevation, grade, speed.
 ```

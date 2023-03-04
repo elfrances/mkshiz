@@ -60,7 +60,10 @@ static void printSummary(GpsTrk *pTrk, CmdArgs *pArgs)
         char timeBuf[128];
         time_t dateAndTime;
 
-        p = TAILQ_FIRST(&pTrk->trkPtList);
+        if ((p = TAILQ_FIRST(&pTrk->trkPtList)) == NULL) {
+            // Empty track!
+            return;
+        }
         timeStamp = p->timestamp;
         dateAndTime = (time_t) timeStamp;  // sec only
         strftime(timeBuf, sizeof (timeBuf), "%Y-%m-%dT%H:%M:%S", gmtime_r(&dateAndTime, &brkDwnTime));
@@ -70,10 +73,6 @@ static void printSummary(GpsTrk *pTrk, CmdArgs *pArgs)
     // Elapsed time
     time = pTrk->endTime - pTrk->startTime;
     fprintf(pArgs->outFile, "    elapsedTime: %s\n", fmtTimeStamp(time, 0, hms));
-
-    // Total time
-    time = pTrk->time;
-    fprintf(pArgs->outFile, "      totalTime: %s\n", fmtTimeStamp(time, 0, hms));
 
     // Moving time
     time = pTrk->time - pTrk->stoppedTime;

@@ -24,6 +24,9 @@ extern int compSMA(GpsTrk *pTrk, const CmdArgs *pArgs);
 // Compute the min/avg/max values
 extern int computeMinMaxValues(GpsTrk *pTrk);
 
+// Scale the specified metric by the specified factor
+extern int scaleMetric(GpsTrk *pTrk, const CmdArgs *pArgs);
+
 // Save the TrkPt's so that they can be restored if
 // needed.
 extern int saveTrkPts(GpsTrk *pTrk);
